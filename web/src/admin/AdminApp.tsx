@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { actions, latestStatus, useStore } from '../data/store';
+import { actions, connectBackend, disconnectBackend, latestStatus, useStore } from '../data/store';
 import { cwaKey, fetchLatestQuake, parseShelterCsv, timeAgo } from '../data/external';
 import type { Report, Resident, State, StatusValue } from '../data/types';
 import { STATUS_LABEL } from '../resident/ResidentApp';
@@ -26,7 +26,9 @@ export default function AdminApp() {
 
   const quake = async () => {
     setBusy(true);
-    const alert = await fetchLatestQuake();
+    // Prefer the real NCDR alert from the backend (Alessandro's API); else CWA key; else SAMPLE.
+    const fromApi = s.backend?.connected ? s.backend.alerts.find((a) => a.title.startsWith('Earthquake')) ?? s.backend.alerts[0] : undefined;
+    const alert = fromApi ? { ...fromApi, at: Date.now() } : await fetchLatestQuake();
     actions.startRollCall('Earthquake', alert);
     setBusy(false);
   };
@@ -39,6 +41,9 @@ export default function AdminApp() {
           <div className="admin-title">{s.building.name} · Command dashboard</div>
           <div className="muted small">{s.building.floors} floors · {s.residents.length} residents · {s.building.address}</div>
         </div>
+        <span className={`tag ${s.backend?.connected && !s.backend.error ? 'tag-r-open' : s.backend?.error ? 'tag-r-blocked' : ''}`} title={s.backend?.error ?? ''}>
+          {s.backend?.connected ? (s.backend.error ? 'API error' : `API · synced ${s.backend.lastSync ? timeAgo(s.backend.lastSync) : ''}`) : 'Local demo mode'}
+        </span>
         <div className="row gap wrap">
           {!s.rollCall?.active ? (
             <>
@@ -169,6 +174,8 @@ function Rooms({ floor }: { floor: number }) {
   );
 }
 
+const span = (r: { floorFrom: number; floorTo: number }) => (r.floorFrom === r.floorTo ? `${r.floorFrom}F` : `${r.floorFrom}–${r.floorTo}F`);
+
 export function priorities(s: State) {
   const items: { level: 'p1' | 'p2' | 'p3'; text: string; sub?: string }[] = [];
   const help = s.residents.filter((r) => latestStatus(s, r.id) === 'need_help')
@@ -181,7 +188,7 @@ export function priorities(s: State) {
     items.push({ level: 'p1', text: `${rep.floor}F: ${CAT_LABEL[rep.category]}`, sub: `${rep.description || 'no details'} · ${timeAgo(rep.at)}` });
   }
   for (const rt of s.routes.filter((x) => x.status === 'blocked')) {
-    items.push({ level: 'p2', text: `${rt.name} BLOCKED (${rt.floorFrom}–${rt.floorTo}F)`, sub: rt.verification.replace('_', ' ') });
+    items.push({ level: 'p2', text: `${rt.name} BLOCKED (${span(rt)})`, sub: rt.verification.replace('_', ' ') });
   }
   if (s.rollCall?.active) {
     for (const r of s.residents.filter((x) => x.vulnerable && ['unknown', 'inside'].includes(latestStatus(s, x.id)))) {
@@ -219,13 +226,14 @@ function RoutesPanel() {
   return (
     <section className="card">
       <h3>Stairwells & exits</h3>
-      {s.routes.map((r) => (
+      <div style={{ maxHeight: 420, overflow: 'auto' }}>
+      {[...s.routes].sort((a, b) => Number(b.status === 'blocked') - Number(a.status === 'blocked')).map((r) => (
         <div key={r.id} className="route">
           <div className="row">
             <b className="grow">{r.name}</b>
             <span className={`tag tag-r-${r.status}`}>{r.status}</span>
           </div>
-          <div className="muted small">{r.status === 'blocked' ? `${r.floorFrom}–${r.floorTo}F · ` : ''}{r.verification.replace('_', ' ')} · {timeAgo(r.updatedAt)}</div>
+          <div className="muted small">{r.status === 'blocked' ? `${span(r)} · ` : ''}{r.verification.replace('_', ' ')} · {timeAgo(r.updatedAt)}</div>
           <div className="row gap">
             <button className="btn btn-xs" onClick={() => actions.setRoute(r.id, { status: 'open', verification: 'staff_verified' })}>✔ Open</button>
             <button className="btn btn-xs" onClick={() => actions.setRoute(r.id, { status: 'blocked', verification: 'staff_verified' })}>✖ Blocked</button>
@@ -235,6 +243,7 @@ function RoutesPanel() {
           </div>
         </div>
       ))}
+      </div>
     </section>
   );
 }
@@ -243,7 +252,7 @@ function Reports() {
   const s = useStore();
   const [filter, setFilter] = useState<'open' | 'all'>('open');
   const list = s.reports.filter((r) => filter === 'all' || r.status !== 'resolved');
-  const name = (id: string) => s.residents.find((r) => r.id === id)?.name ?? '?';
+  const name = (id: string) => s.residents.find((r) => r.id === id)?.name ?? 'a resident';
   return (
     <section>
       <div className="row gap" style={{ marginBottom: 12 }}>
@@ -305,9 +314,9 @@ function Residents() {
                   <td>{r.room}</td>
                   <td>{r.name}</td>
                   <td><span className={`dot dot-${st?.status ?? 'unknown'}`} /> {STATUS_LABEL[st?.status ?? 'unknown']}{st && st.source !== 'self' ? <span className="muted small"> ({st.source})</span> : ''}</td>
-                  <td>{r.language}</td>
-                  <td>{r.phone}</td>
-                  <td className="small">{r.emergencyContact}</td>
+                  <td>{r.language || '—'}</td>
+                  <td>{r.phone || '—'}</td>
+                  <td className="small">{r.emergencyContact || '—'}</td>
                   <td>{r.vulnerable && <span className="tag tag-warn">{r.vulnerableNote}</span>}</td>
                   <td>{(st?.status ?? 'unknown') !== 'safe' && <button className="btn btn-xs" onClick={() => actions.setStatus(r.id, { status: 'safe', source: 'staff' })}>Staff: safe</button>}</td>
                 </tr>
@@ -342,7 +351,7 @@ function handoffText(s: State) {
   lines.push('BUILDING CONDITIONS');
   for (const r of s.routes) {
     if (r.status === 'unknown') continue;
-    lines.push(`- ${r.name}: ${r.status.toUpperCase()}${r.status === 'blocked' ? ` ${r.floorFrom}–${r.floorTo}F` : ''} (${r.verification.replace('_', ' ')})`);
+    lines.push(`- ${r.name}: ${r.status.toUpperCase()}${r.status === 'blocked' && !r.name.endsWith(`${r.floorFrom}F`) ? ` ${span(r)}` : ''} (${r.verification.replace('_', ' ')})`);
   }
   for (const rep of s.reports.filter((x) => x.urgency === 'emergency' && x.status !== 'resolved' && x.category !== 'blocked_route')) {
     lines.push(`- ${rep.floor}F: ${CAT_LABEL[rep.category].replace(/^\S+ /, '')}${rep.description ? `: ${rep.description}` : ''} (reported)`);
@@ -380,9 +389,32 @@ function DataTab() {
   const [msg, setMsg] = useState('');
   const [ann, setAnn] = useState('');
   const isSample = s.shelters.some((x) => x.sample);
+  const [url, setUrl] = useState(s.backend?.url ?? 'http://localhost:8000');
+  const [connecting, setConnecting] = useState(false);
   return (
     <div className="dash-grid">
       <div>
+        <section className="card form">
+          <h3>Backend (DormSafe API)</h3>
+          <p className="muted small">
+            Connect to the FastAPI backend (branch <b>ale</b>: <code>uvicorn dormsafe.api:app --host 0.0.0.0</code>) so phones and laptops share
+            one live state, with real NCDR alerts and NFA shelters. Without it, the app runs in local demo mode (one browser only).
+          </p>
+          {s.backend?.connected ? (
+            <>
+              <p className="small">Connected to <b>{s.backend.url}</b> · alerts: {s.backend.alertsMode ?? '?'} · shelters: {s.backend.sheltersMode ?? '?'} ({s.shelters.length} within radius){s.backend.error ? <><br /><b className="c-help">{s.backend.error}</b></> : null}</p>
+              <button className="btn" onClick={() => disconnectBackend()}>Disconnect (back to local demo)</button>
+            </>
+          ) : (
+            <>
+              <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://192.168.x.x:8000" />
+              <button className="btn btn-primary" disabled={connecting} onClick={async () => { setConnecting(true); const err = await connectBackend(url); setConnecting(false); setMsg(err ?? 'Connected'); }}>
+                {connecting ? 'Connecting…' : 'Connect'}
+              </button>
+            </>
+          )}
+        </section>
+
         <section className="card form">
           <h3>Announcement to all residents</h3>
           <textarea rows={2} value={ann} onChange={(e) => setAnn(e.target.value)} placeholder="e.g. Water shut-off 2–4pm today on floors 5–8" />
@@ -399,7 +431,7 @@ function DataTab() {
         <section className="card form">
           <h3>Shelters (NFA 避難收容處所)</h3>
           <p className="muted small">
-            Currently: {isSample ? <b>{s.shelters.length} SAMPLE shelters (not real)</b> : `${s.shelters.length} shelters imported from NFA CSV`}.
+            Currently: {isSample ? <b>{s.shelters.length} SAMPLE shelters (not real)</b> : s.backend?.connected ? `${s.shelters.length} real NFA shelters from the backend` : `${s.shelters.length} shelters imported from NFA CSV`}.
             Download the CSV for dataset <b>73242</b> (避難收容處所點位檔) from data.gov.tw and import it here.
           </p>
           <input type="file" accept=".csv,text/csv" onChange={async (e) => {
@@ -428,7 +460,7 @@ function DataTab() {
 
       <section className="card">
         <h3>Shelter status (NFA 12849 openstatus)</h3>
-        <p className="muted small">Set open / full / closed. Residents only see open or full shelters.</p>
+        <p className="muted small">"designated" = on the official NFA list, not necessarily open. Set open / full / closed during an event; residents don't see closed shelters.</p>
         <div className="table-wrap" style={{ maxHeight: 520 }}>
           <table>
             <thead><tr><th>Name</th><th>Capacity</th><th>Status</th></tr></thead>
@@ -442,7 +474,7 @@ function DataTab() {
                     <td>{x.capacity || '?'}</td>
                     <td>
                       <select value={x.status} onChange={(e) => actions.setShelterStatus(x.id, e.target.value as typeof x.status)}>
-                        {['open', 'full', 'closed', 'unknown'].map((v) => <option key={v}>{v}</option>)}
+                        {['designated', 'open', 'full', 'closed', 'unknown'].map((v) => <option key={v}>{v}</option>)}
                       </select>
                     </td>
                   </tr>

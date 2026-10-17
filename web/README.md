@@ -17,7 +17,35 @@ npm run dev          # http://localhost:5173  (add --host to open it from a phon
 npm run build        # type-check + production build in dist/
 ```
 
-## Demo (matches readme.md / HANDOVER.md §11)
+## Two modes
+
+| Mode | When | What syncs |
+|---|---|---|
+| **Local demo** (default) | No backend running | Tabs in **one browser** (localStorage + BroadcastChannel). 812 simulated residents, sample shelters. |
+| **API** | Admin → Data & settings → **Connect** to the backend from branch `ale` | Every device connected to the same API (polls every 2 s). Real NCDR alerts + 187 real NFA shelters near the dorm. 96 simulated residents (Alessandro's fixture). |
+
+## Demo on localhost (no hosting needed)
+
+**Laptop only (simplest, works on any Wi-Fi):**
+```bash
+# terminal 1: backend (branch ale)
+pip install -e ".[dev]" && uvicorn dormsafe.api:app --port 8000
+# terminal 2: this app (branch Luke)
+cd web && npm install && npm run dev
+```
+Open `http://localhost:5173/#/admin` → Data & settings → Connect (`http://localhost:8000`).
+Open a second window (phone-sized) at `http://localhost:5173/#/resident/sim-r803-a`.
+
+**Real phone + laptop (same Wi-Fi):**
+```bash
+uvicorn dormsafe.api:app --host 0.0.0.0 --port 8000
+cd web && npm run dev -- --host
+```
+On the phone open `http://<laptop-ip>:5173`, go to `#/admin` → Data & settings → Connect to `http://<laptop-ip>:8000`, then open a resident page.
+Caveats: phones only allow GPS on https/localhost, so over the LAN location is simply skipped (check-ins still work).
+Venue Wi-Fi often blocks device-to-device traffic. If the phone can't reach the laptop, use a phone hotspot, or fall back to two windows on the laptop.
+
+## Demo (local mode, matches readme.md / HANDOVER.md §11)
 
 1. Open `/#/admin` in one tab and `/#/resident/r-905-1` in another. **Tabs in the same browser sync live.**
 2. Admin → **⚠ Simulate earthquake** → roll call starts, everyone Unknown.
@@ -36,9 +64,26 @@ Reset everything: Admin → Data & settings → **Reset demo data**.
 - **Earthquake**: with a CWA key (Admin → Data, or `VITE_CWA_API_KEY` in `.env`), "Simulate earthquake" replays the latest real report from CWA `E-A0015-001`. Without a key it uses a clearly labelled SAMPLE event.
 - **Shelters**: ships with 5 **SAMPLE** shelters (not real). Download NFA dataset **73242** (避難收容處所點位檔) CSV from data.gov.tw and import it on Admin → Data; the parser finds the 經度/緯度/名稱/地址/人數 columns (UTF-8 or Big5). Shelter open/full/closed (dataset 12849 `openstatus`) can be set per shelter there.
 
-## How state works (and how to move to Supabase)
+## How it connects to the backend (`src/data/api.ts`)
 
-`src/data/store.ts` keeps one state object in `localStorage` and broadcasts changes to other tabs with `BroadcastChannel`. That's why the demo needs no backend, but **it only syncs within one browser**. To sync a real phone with the laptop, replace `commit()`/`load()` with Supabase tables (schema in `HANDOVER.md` §8) + Realtime; the `actions` API used by the screens can stay the same.
+| App feature | API (branch `ale`) | Notes |
+|---|---|---|
+| Building, residents | `GET /dorm`, `GET /residents` | API has no phone / emergency contact / vulnerable flag yet → shown as "—" |
+| Check-in, SOS, roommate & staff confirm | `GET/POST /resident-statuses` | safe ↔ `safe`, inside ↔ `still_inside`, need help ↔ `needs_help`; self / peer / staff map 1:1 |
+| Reports | `GET/POST /incidents` | Water leak / needs fixing go as `other` with a `[leak]`/`[broken]` prefix |
+| Stairwells & exits | `GET/POST /building-access` | per-floor access points (`stair-east-f7` …) |
+| Earthquake button | `GET /external/alerts` | real NCDR CAP alert (frozen 2026-10-14 snapshot, or live) |
+| Shelters | `GET /external/shelters` | real NFA 73242, 5 km radius; `designated` = on official list |
+
+**Kept local in the admin's browser (API has no endpoint yet):** report photos, report workflow status (new / in progress / resolved), roll call start/end, announcements, "out of dorm". A roll call is done client-side: statuses older than the roll-call start count as unknown.
+
+**Asks for the backend** (would make the API demo complete):
+1. `POST /roll-calls` + `GET /roll-calls/active` so phones see the "Are you safe?" banner.
+2. `PATCH /incidents/{id}` (verification_state / resolved) and expose `reporter_id`.
+3. Photo upload on incidents (`POST /incidents/{id}/photo` or a base64 field).
+4. Resident profile fields: phone, language, emergency contact, assistance needs.
+5. `GET/POST /announcements`.
+6. Optional: `out` resident state; dorm size 12 floors to match the README's 812-resident story.
 
 ## Files
 

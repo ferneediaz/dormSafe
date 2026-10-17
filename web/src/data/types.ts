@@ -88,8 +88,18 @@ export interface Shelter {
   capacity: number;
   disasterTypes: string;
   phone: string;
-  status: 'open' | 'full' | 'closed' | 'unknown';
+  status: 'open' | 'full' | 'closed' | 'unknown' | 'designated';
   sample?: boolean;
+}
+
+export interface Backend {
+  url: string;
+  connected: boolean;
+  error?: string;
+  alertsMode?: string; // X-Data-Mode: live | cached_real | frozen_real
+  sheltersMode?: string;
+  alerts: Alert[];
+  lastSync?: number;
 }
 
 export interface Announcement {
@@ -109,4 +119,7 @@ export interface State {
   alert: Alert | null;
   shelters: Shelter[];
   announcements: Announcement[];
+  backend?: Backend | null;
+  /** Local-only extras the API doesn't store yet (photos, report status, who reported). */
+  overlay?: Record<string, { photo?: string; status?: Report['status']; residentId?: string; routeId?: string }>;
 }

@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { actions, latestStatus, useStore } from '../data/store';
-import { EMERGENCY_NUMBERS, compressImage, getLocation, haversineKm, mapsLink, timeAgo } from '../data/external';
+import { EMERGENCY_NUMBERS, compressImage, getLocation, haversineKm, knownLocation, mapsLink, primeLocation, timeAgo } from '../data/external';
 import type { ReportCategory, StatusValue } from '../data/types';
 
 type Tab = 'home' | 'report' | 'shelters' | 'call';
@@ -17,6 +17,7 @@ export default function ResidentApp({ residentId }: { residentId: string }) {
   const s = useStore();
   const me = s.residents.find((r) => r.id === residentId);
   const [tab, setTab] = useState<Tab>('home');
+  useEffect(() => primeLocation(), []);
   const [toast, setToast] = useState('');
   const flash = (m: string) => {
     setToast(m);
@@ -80,9 +81,9 @@ function Home({ residentId, flash }: { residentId: string; flash: (m: string) =>
 
   const set = async (status: StatusValue, note?: string) => {
     setBusy(true);
-    const loc = await getLocation(2500);
+    const loc = knownLocation();
     actions.setStatus(me.id, { status, source: 'self', note, lat: loc?.lat, lon: loc?.lon });
-    setBusy(false);
+    setTimeout(() => setBusy(false), 300);
     flash(status === 'need_help' ? 'Help request sent to dorm admins' : 'Status sent ✓');
   };
 
@@ -182,7 +183,9 @@ function ReportForm({ residentId, flash, done }: { residentId: string; flash: (m
   const [floor, setFloor] = useState(me.floor);
   const [room, setRoom] = useState(me.room);
   const [desc, setDesc] = useState('');
-  const [routeId, setRouteId] = useState(s.routes[0]?.id ?? '');
+  const [routeId, setRouteId] = useState('');
+  const routeOpts = s.routes.filter((r) => floor >= r.floorFrom && floor <= r.floorTo);
+  const pickedRoute = routeOpts.find((r) => r.id === routeId) ?? routeOpts[0];
   const [photo, setPhoto] = useState<string | undefined>();
   const [sending, setSending] = useState(false);
   const mine = s.reports.filter((r) => r.residentId === me.id);
@@ -190,10 +193,10 @@ function ReportForm({ residentId, flash, done }: { residentId: string; flash: (m
   const submit = async () => {
     if (!cat) return;
     setSending(true);
-    const loc = await getLocation(2000);
+    const loc = knownLocation();
     actions.addReport({
       residentId: me.id, category: cat, description: desc, photo, floor, room,
-      routeId: cat === 'blocked_route' ? routeId : undefined,
+      routeId: cat === 'blocked_route' ? pickedRoute?.id : undefined,
       urgency: EMERGENCY_CATS.includes(cat) ? 'emergency' : 'normal',
       lat: loc?.lat, lon: loc?.lon,
     });
@@ -216,8 +219,8 @@ function ReportForm({ residentId, flash, done }: { residentId: string; flash: (m
         <section className="card form">
           {cat === 'blocked_route' && (
             <label className="field"><span>Which route?</span>
-              <select value={routeId} onChange={(e) => setRouteId(e.target.value)}>
-                {s.routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              <select value={pickedRoute?.id ?? ''} onChange={(e) => setRouteId(e.target.value)}>
+                {routeOpts.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
             </label>
           )}
@@ -278,7 +281,7 @@ function Shelters() {
     <>
       <section className="card">
         <h3>Nearest evacuation shelters</h3>
-        <p className="muted small">From {loc ? 'your location' : `${s.building.name}`}. Source: {isSample ? <b>SAMPLE data (admin can import NFA 73242)</b> : 'NFA 避難收容處所 (data.gov.tw 73242)'}</p>
+        <p className="muted small">From {loc ? 'your location' : `${s.building.name}`}. Source: {isSample ? <b>SAMPLE data (admin can import NFA 73242)</b> : `NFA 避難收容處所 (data.gov.tw 73242)${s.backend?.sheltersMode === 'frozen_real' ? ', real snapshot 2026-10-14' : ''}`}</p>
         {!loc && (
           <button className="btn btn-sm" disabled={asking} onClick={async () => { setAsking(true); setLoc(await getLocation(6000)); setAsking(false); }}>
             📍 {asking ? 'Locating…' : 'Use my location'}
@@ -289,7 +292,7 @@ function Shelters() {
         <section key={x.id} className="card shelter">
           <div className="row">
             <b className="grow">{x.name}</b>
-            <span className={`tag tag-sh-${x.status}`}>{x.status}</span>
+            <span className={`tag tag-sh-${x.status}`}>{x.status === 'designated' ? 'official shelter' : x.status}</span>
           </div>
           <div className="muted small">{x.address}</div>
           <div className="row small gap">

@@ -71,6 +71,7 @@ select { width: auto; }
 .tag-sh-open { background: #dcfce7; color: #166534; }
 .tag-sh-full { background: #fee2e2; color: #991b1b; }
 .tag-sh-unknown { background: var(--line); }
+.tag-sh-designated { background: #dbeafe; color: #1e3a8a; }
 
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--unknown); flex: none; }
 .dot-safe { background: var(--safe); }

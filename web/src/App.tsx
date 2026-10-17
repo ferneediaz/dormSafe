@@ -23,7 +23,7 @@ export default function App() {
 
 function Landing() {
   const s = useStore();
-  const [q, setQ] = useState('905');
+  const [q, setQ] = useState(s.backend?.connected ? '803' : '905');
   const matches = useMemo(() => {
     const t = q.trim().toLowerCase();
     if (!t) return [];

@@ -39,6 +39,13 @@ export function getLocation(timeoutMs = 4000): Promise<{ lat: number; lon: numbe
   });
 }
 
+// Location is fetched once in the background; sends never wait for GPS.
+let lastLoc: { lat: number; lon: number } | null = null;
+export function primeLocation() {
+  getLocation(8000).then((l) => { if (l) lastLoc = l; });
+}
+export const knownLocation = () => lastLoc;
+
 export const SAMPLE_QUAKE: Alert = {
   title: 'SAMPLE EVENT: Earthquake M6.0',
   detail: 'Replay of a sample event (not live). Intensity 4 in Taipei City. Add a CWA API key on Admin → Data to use the latest real report.',
