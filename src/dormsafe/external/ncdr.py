@@ -16,11 +16,12 @@ Superseded (referenced by a newer alert) and cancelled alerts are dropped.
 from __future__ import annotations
 
 import logging
+import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from dormsafe.external.models import DataMode, ExternalAlert
+from dormsafe.external.models import CountyIntensity, DataMode, Earthquake, ExternalAlert
 from dormsafe.external.parsing import clean_str, parse_datetime
 
 log = logging.getLogger(__name__)
@@ -141,7 +142,10 @@ class CapAlert:
     expires: datetime | None = None
     headline: str | None = None
     description: str | None = None
+    sender_name: str | None = None
+    web: str | None = None
     area_descriptions: list[str] = field(default_factory=list)
+    parameters: list[tuple[str, str]] = field(default_factory=list)
 
 
 def _parse_references(value: str | None) -> list[str]:
@@ -177,6 +181,12 @@ def parse_cap(content: bytes) -> CapAlert:
     alert.expires = parse_datetime(_text(info, "expires"))
     alert.headline = _text(info, "headline")
     alert.description = _text(info, "description")
+    alert.sender_name = _text(info, "senderName")
+    alert.web = _text(info, "web")
+    for param in _children(info, "parameter"):
+        name, value = _text(param, "valueName"), _text(param, "value")
+        if name and value:
+            alert.parameters.append((name, value))
     for area in _children(info, "area"):
         desc = _text(area, "areaDesc")
         if desc and desc not in alert.area_descriptions:
@@ -236,6 +246,56 @@ def build_alerts(
             alert_from_cap(cap, data_mode) if cap else alert_from_feed_entry(entry, data_mode)
         )
     return alerts
+
+
+def is_earthquake_entry(entry: FeedEntry) -> bool:
+    return classify_event(None, entry.title) == "earthquake"
+
+
+def _first_float(value: str | None) -> float | None:
+    match = re.search(r"-?\d+(?:\.\d+)?", value or "")
+    return float(match.group()) if match else None
+
+
+def earthquake_from_cap(alert: CapAlert, data_mode: DataMode) -> Earthquake | None:
+    """CWA earthquake parameters (EventOriginTime, EventLatLon, LocalMaxIntensity, ...)."""
+    if classify_event(alert.event_code, alert.event) != "earthquake":
+        return None
+    params: dict[str, str] = {}
+    intensities: list[CountyIntensity] = []
+    for name, value in alert.parameters:
+        if name == "LocalMaxIntensity":
+            # '3級;"花蓮縣";Taiwan_Geocode_103;10015;;;"CAP-EQ:1.0"'
+            parts = [p.strip().strip('"') for p in value.split(";")]
+            if len(parts) >= 2 and parts[0] and parts[1]:
+                intensities.append(CountyIntensity(county=parts[1], intensity=parts[0]))
+        else:
+            params.setdefault(name, value)
+
+    lat = lon = None
+    if latlon := params.get("EventLatLon"):  # '23.559,121.453 0.000'
+        try:
+            lat_s, lon_s = latlon.split()[0].split(",")[:2]
+            lat, lon = float(lat_s), float(lon_s)
+        except ValueError:
+            lat = lon = None
+
+    return Earthquake(
+        id=f"ncdr:{alert.identifier}",
+        origin_time=parse_datetime(params.get("EventOriginTime")) or alert.onset,
+        magnitude=_first_float(params.get("EventMagnitudeDescription")),
+        depth_km=_first_float(params.get("EventDepth")),
+        epicenter_latitude=lat,
+        epicenter_longitude=lon,
+        epicenter_location=params.get("EventLocationName"),
+        description=alert.description,
+        max_intensity=intensities[0].intensity if intensities else None,
+        county_intensities=intensities,
+        report_url=alert.web,
+        publisher=params.get("EventPublisher") or alert.sender_name,
+        source=NCDR_SOURCE,
+        data_mode=data_mode,
+    )
 
 
 def cap_filename(identifier: str) -> str:

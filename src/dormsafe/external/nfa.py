@@ -20,7 +20,7 @@ import logging
 import statistics
 from collections import defaultdict
 
-from dormsafe.external.models import Shelter
+from dormsafe.external.models import NearestShelter, Shelter
 from dormsafe.external.parsing import (
     clean_str,
     haversine_km,
@@ -143,6 +143,35 @@ def _county_outliers(rows: list[tuple[str | None, Shelter]]) -> set[int]:
             if haversine_km(s.latitude, s.longitude, med_lat, med_lon) > MAX_KM_FROM_COUNTY_MEDIAN:
                 outliers.add(i)
     return outliers
+
+
+def nearest(
+    shelters: list[Shelter],
+    latitude: float,
+    longitude: float,
+    *,
+    limit: int = 5,
+    disaster_type: str | None = None,
+    exclude_status: set[str] | frozenset[str] = frozenset(),
+) -> list[NearestShelter]:
+    """Closest shelters by straight-line distance.
+
+    With `disaster_type`, only shelters officially listed for it are kept (a shelter with no
+    published disaster types is excluded: suitability unknown).
+    """
+    candidates = [
+        s
+        for s in shelters
+        if (disaster_type is None or disaster_type in s.disaster_types)
+        and s.status not in exclude_status
+    ]
+    ranked = sorted(
+        ((haversine_km(latitude, longitude, s.latitude, s.longitude), s) for s in candidates),
+        key=lambda pair: pair[0],
+    )
+    return [
+        NearestShelter(**s.model_dump(), distance_km=round(d, 3)) for d, s in ranked[:limit]
+    ]
 
 
 def within_radius(

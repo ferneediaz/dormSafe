@@ -44,10 +44,41 @@ class Shelter(BaseModel):
     longitude: float = Field(ge=-180, le=180)
     status: str | None = Field(
         default=None,
-        description="'designated' = on the official shelter list; activation is not published "
-        "in this dataset, so this never means 'open'.",
+        description="From NFA dataset 12849 when a status record matches: 'open' | 'full' | "
+        "'withdrawn' (撤除; also the apparent default for never-opened shelters, NOT 'closed') "
+        "| 'unknown'. 'designated' = on the official list, no status record matched.",
     )
     planned_capacity: int | None = Field(default=None, ge=0)
     suitable_for_vulnerable_people: bool | None = None
     disaster_types: list[str] = Field(default_factory=list)
     source: str = Field(description="Publishing agency, e.g. 'NFA'")
+
+
+class NearestShelter(Shelter):
+    distance_km: float = Field(description="Straight-line distance from the query point")
+
+
+class CountyIntensity(BaseModel):
+    county: str = Field(description="County/city as published, e.g. '花蓮縣'")
+    intensity: str = Field(description="Max local intensity as published, e.g. '3級', '5弱'")
+
+
+class Earthquake(BaseModel):
+    """A CWA earthquake report as distributed through the NCDR CAP feed."""
+
+    id: str = Field(description="Same id as the matching ExternalAlert ('ncdr:<CAP id>')")
+    origin_time: datetime | None = None
+    magnitude: float | None = Field(default=None, description="Richter magnitude (芮氏規模)")
+    depth_km: float | None = None
+    epicenter_latitude: float | None = None
+    epicenter_longitude: float | None = None
+    epicenter_location: str | None = Field(default=None, description="e.g. '花蓮縣豐濱鄉'")
+    description: str | None = None
+    max_intensity: str | None = None
+    county_intensities: list[CountyIntensity] = Field(
+        default_factory=list, description="Strongest first, as published"
+    )
+    report_url: str | None = None
+    publisher: str | None = Field(default=None, description="Issuing agency, e.g. 中央氣象署")
+    source: str
+    data_mode: DataMode

@@ -91,6 +91,55 @@ def test_external_shelters(client):
     assert len(everything) > len(nearby)
 
 
+def test_summary_endpoint(client):
+    body = client.get("/summary").json()
+    assert body["residents"]["unknown"] == body["residents"]["total"] == 96
+    assert len(body["floors"]) == 8 and body["floors"][0]["floor"] == 8
+    assert body["roll_call"] is None
+
+
+def test_roll_call_from_real_earthquake(client):
+    assert client.get("/roll-call").json() is None
+    quake = client.get("/external/earthquakes/latest").json()
+    r = client.post("/roll-call", json={"alert_id": quake["id"]})
+    assert r.status_code == 201
+    assert r.json()["reason"] == "Earthquake M4.3 花蓮縣豐濱鄉"
+    assert client.get("/roll-call").json()["active"] is True
+    assert client.post("/roll-call", json={"alert_id": "ncdr:nope"}).status_code == 404
+    assert client.post("/roll-call/end").json()["active"] is False
+    assert client.post("/roll-call/end").status_code == 404
+
+
+def test_demo_endpoints(client):
+    body = client.post("/demo/simulate-check-ins").json()
+    assert body["residents"]["safe"] > 0
+    assert client.post("/demo/simulate-check-ins", json={"safe": 2}).status_code == 422
+    body = client.post("/demo/scenario").json()
+    assert body["open_incidents"] == 1
+    body = client.post("/demo/reset").json()
+    assert body["residents"]["unknown"] == 96 and body["open_incidents"] == 0
+    bad = {"resident_id": "sim-r101-a", "state": "safe", "confirmation_type": "simulated"}
+    assert client.post("/resident-statuses", json=bad).status_code == 422
+
+
+def test_external_earthquakes(client):
+    r = client.get("/external/earthquakes")
+    assert r.status_code == 200 and r.headers["X-Data-Mode"] == "frozen_real"
+    assert r.json()[0]["magnitude"] == 4.3
+
+
+def test_nearest_shelters_endpoint(client):
+    r = client.get(
+        "/external/shelters/nearest", params={"disaster_type": "earthquake", "limit": 3}
+    )
+    assert r.status_code == 200 and r.headers["X-Source"] == "NFA"
+    got = r.json()
+    assert len(got) == 3
+    assert [s["distance_km"] for s in got] == sorted(s["distance_km"] for s in got)
+    assert all("earthquake" in s["disaster_types"] for s in got)
+    assert client.get("/external/shelters/nearest", params={"latitude": 25}).status_code == 422
+
+
 def test_scenario_flag_seeds_at_startup():
     client = TestClient(create_app(make_settings(seed_demo_scenario=True)))
     assert len(client.get("/incidents").json()) == 1

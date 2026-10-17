@@ -43,6 +43,8 @@ class Settings(BaseSettings):
         "ED6CF735-6C03-4573-A882-72C1BEC799CB/resource/"
         "54550E2F-4567-4C8F-BD2E-E54E9D0386B8/download"
     )
+    # 內政部消防署 避難收容處所開設情形 (data.gov.tw dataset 12849), XML
+    nfa_status_url: str = "https://portal2.emic.gov.tw/Pub/EEA2/OpenData/Shelter.xml"
     # Default radius for GET /external/shelters (0 = all of Taiwan, ~6000 records).
     shelter_radius_km: float = Field(default=5.0, ge=0)
 

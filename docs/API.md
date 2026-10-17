@@ -15,7 +15,7 @@ CORS is open (`*`) for local frontend development. All timestamps are ISO 8601 w
 
 | | Source | Endpoints |
 |---|---|---|
-| **External real data** | NCDR CAP alerts, NFA shelter list | `/external/alerts`, `/external/shelters` |
+| **External real data** | NCDR CAP alerts (incl. CWA earthquake reports), NFA shelter list + status | `/external/*` |
 | **Local dorm data** | in-memory, **simulated** residents | `/dorm`, `/residents`, `/resident-statuses`, `/incidents`, `/building-access` |
 
 External responses carry provenance headers: `X-Data-Mode` (`live` · `cached_real` · `frozen_real`),
@@ -30,14 +30,19 @@ scenario (fire on floor 7, east stairwell floor 7 blocked, room 803 needs help).
 * **A resident with no entry in `/resident-statuses` is `unknown`.** The API never fabricates statuses.
 * A status applies to one resident only — never infer roommates.
 * Resident ids start with `sim-`, display names with `[SIM]`: all residents are fictional.
-* `Shelter.status == "designated"` means "on the official list", **not** "open".
+* `Shelter.status` comes from NFA dataset 12849 when a status record matches the shelter:
+  `open` · `full` · `withdrawn` · `unknown`; otherwise `designated` (on the official list, no
+  status published). **`withdrawn` (撤除) is not "closed"**: it is the apparent default for
+  shelters that were never opened (every record had it on 2026-10-14 and 2026-10-17).
+* Statuses with `confirmation_type: "simulated"` come from the demo simulator, never from a person.
+* Starting a roll call resets every resident to unknown (`/resident-statuses` becomes `[]`).
 * Errors: `404` unknown id, `422` invalid body (FastAPI `{"detail": ...}`).
 
 ## Enumerations
 
 ```text
 ResidentState      unknown | safe | still_inside | needs_help
-ConfirmationType   self | peer | staff
+ConfirmationType   self | peer | staff | simulated   (simulated: demo simulator only, rejected on POST)
 IncidentType       fire | smoke | gas_leak | blocked_stairwell | blocked_corridor |
                    structural_damage | electrical_hazard | injured_person | trapped_person | other
 VerificationState  reported | corroborated | staff_verified | resolved
@@ -59,8 +64,18 @@ ExternalAlert.data_mode    live | cached_real | frozen_real
 | POST | `/incidents` | `IncidentCreate` | `201 DormIncident` |
 | GET | `/building-access` | – | `BuildingAccessPoint[]` |
 | POST | `/building-access` | `BuildingAccessUpdate` | `200 BuildingAccessPoint` |
+| GET | `/summary` | – | `DormSummary` (totals, per floor top-first, blocked access points) |
+| GET | `/roll-call` | – | `RollCall \| null` (current or last ended) |
+| POST | `/roll-call` | `RollCallStart` | `201 RollCall` (everyone → unknown; `404` unknown alert_id) |
+| POST | `/roll-call/end` | – | `RollCall` (`404` if none active) |
+| POST | `/demo/simulate-check-ins` | `SimulateCheckIns?` | `DormSummary` |
+| POST | `/demo/scenario` | – | `DormSummary` (fire F7, east stairwell F7 blocked, room 803 needs help) |
+| POST | `/demo/reset` | – | `DormSummary` |
 | GET | `/external/alerts` | – | `ExternalAlert[]` |
+| GET | `/external/earthquakes` | – | `Earthquake[]` newest first |
+| GET | `/external/earthquakes/latest` | – | `Earthquake` (`404` if none) |
 | GET | `/external/shelters?radius_km=` | – | `Shelter[]` (default 5 km around the dorm; `0` = all) |
+| GET | `/external/shelters/nearest?latitude=&longitude=&disaster_type=&limit=&exclude_status=` | – | `NearestShelter[]` closest first (default: from the dorm, 5 results) |
 
 ## Schemas
 
@@ -96,6 +111,39 @@ ExternalAlert        { id: string; event_type: string; headline: string|null; de
 Shelter              { id: string; name: string; address: string|null; latitude: number; longitude: number;
                        status: string|null; planned_capacity: number|null;
                        suitable_for_vulnerable_people: boolean|null; disaster_types: string[]; source: string }
+NearestShelter       Shelter & { distance_km: number }   // straight line, not a walking route
+                     // disaster_type filter drops shelters with no published disaster types
+Earthquake           { id: string /* same id as the ExternalAlert */; origin_time: datetime|null;
+                       magnitude: number|null; depth_km: number|null;
+                       epicenter_latitude: number|null; epicenter_longitude: number|null;
+                       epicenter_location: string|null; description: string|null; max_intensity: string|null;
+                       county_intensities: { county: string; intensity: string }[]  // strongest first
+                       report_url: string|null; publisher: string|null; source: string; data_mode: DataMode }
+
+ResidentStatus       + roll_call_id: string|null
+RollCall             { id: string; dorm_id: string; reason: string; alert_id: string|null;
+                       started_at: datetime; ended_at: datetime|null; active: boolean }
+RollCallStart        { reason?: string|null; alert_id?: string|null }   // reason defaults to e.g. "Earthquake M4.3 花蓮縣豐濱鄉"
+StatusCounts         { total: number; safe: number; still_inside: number; needs_help: number; unknown: number }
+FloorSummary         StatusCounts & { floor: number; blocked_access_point_ids: string[]; open_incident_ids: string[] }
+DormSummary          { dorm_id: string; roll_call: RollCall|null; residents: StatusCounts;
+                       floors: FloorSummary[] /* top floor first */; blocked_access_points: BuildingAccessPoint[];
+                       open_incidents: number; generated_at: datetime }
+SimulateCheckIns     { safe?: number; still_inside?: number; needs_help?: number; seed?: number }
+                     // shares of the whole roster, default 623/812, 43/812, 5/812 (readme scenario);
+                     // only fills residents with no status; upper floors are left unknown first
+```
+
+## Demo flow with the API
+
+```text
+GET  /external/earthquakes/latest            → real CWA report via NCDR (no API key)
+POST /roll-call {"alert_id": "<its id>"}     → everyone unknown
+POST /resident-statuses ...                  → real check-ins from the app
+POST /demo/simulate-check-ins                → fill the rest with SIMULATED statuses
+POST /demo/scenario                          → fire, blocked stairwell, needs-help resident
+GET  /summary                                → dashboard numbers
+GET  /external/shelters/nearest?disaster_type=earthquake
 ```
 
 ## Demo fixture

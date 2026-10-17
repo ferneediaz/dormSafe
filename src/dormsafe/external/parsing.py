@@ -77,6 +77,12 @@ def split_list(value: str | None, separators: str = ",，、;；\n") -> list[str
     return [p.strip() for p in parts if p.strip()]
 
 
+def normalize_name(value: str) -> str:
+    """Key for matching the same shelter across datasets ('臺' == '台', no punctuation)."""
+    value = re.sub(r"[\s　()（）\[\]【】「」、,，.。\-－_]", "", value)
+    return value.replace("臺", "台")
+
+
 def parse_datetime(value: str | None, default_tz: timezone = TAIPEI_TZ) -> datetime | None:
     """Parse ISO 8601, `YYYY/MM/DD HH:MM[:SS]` and zh-TW `YYYY/MM/DD 上午|下午 hh:mm[:ss]`.
 

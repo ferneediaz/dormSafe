@@ -35,7 +35,8 @@ class Resident(BaseModel):
 # ------------------------------------------------------------------ resident status
 
 ResidentState = Literal["unknown", "safe", "still_inside", "needs_help"]
-ConfirmationType = Literal["self", "peer", "staff"]
+# "simulated" is set only by the demo simulator; the API rejects it on POST.
+ConfirmationType = Literal["self", "peer", "staff", "simulated"]
 
 
 class ResidentStatus(BaseModel):
@@ -49,6 +50,9 @@ class ResidentStatus(BaseModel):
     room: str | None = None
     note: str | None = None
     updated_at: datetime
+    roll_call_id: str | None = Field(
+        default=None, description="Roll call active when reported (null if none)"
+    )
 
 
 class ResidentStatusCreate(BaseModel):
@@ -142,3 +146,64 @@ class BuildingAccessUpdate(BaseModel):
     access_point_id: str
     state: AccessState
     verification_state: VerificationState = "reported"
+
+
+# ------------------------------------------------------------------ roll call
+
+
+class RollCall(BaseModel):
+    """An accountability event. Starting one resets every resident to `unknown`."""
+
+    id: str
+    dorm_id: str
+    reason: str
+    alert_id: str | None = Field(default=None, description="ExternalAlert that triggered it")
+    started_at: datetime
+    ended_at: datetime | None = None
+    active: bool
+
+
+class RollCallStart(BaseModel):
+    reason: str | None = Field(
+        default=None, max_length=200, description="Defaults to a text built from alert_id"
+    )
+    alert_id: str | None = Field(
+        default=None, description="e.g. an id from /external/earthquakes or /external/alerts"
+    )
+
+
+# ------------------------------------------------------------------ summary
+
+
+class StatusCounts(BaseModel):
+    total: int
+    safe: int
+    still_inside: int
+    needs_help: int
+    unknown: int
+
+
+class FloorSummary(StatusCounts):
+    floor: int
+    blocked_access_point_ids: list[str]
+    open_incident_ids: list[str] = Field(description="Incidents not yet resolved on this floor")
+
+
+class DormSummary(BaseModel):
+    dorm_id: str
+    roll_call: RollCall | None
+    residents: StatusCounts
+    floors: list[FloorSummary] = Field(description="Ordered top floor first")
+    blocked_access_points: list[BuildingAccessPoint]
+    open_incidents: int
+    generated_at: datetime
+
+
+class SimulateCheckIns(BaseModel):
+    """Body of POST /demo/simulate-check-ins. Fractions of the whole roster; defaults follow
+    the readme scenario (623 safe / 43 inside / 5 need help of 812)."""
+
+    safe: float = Field(default=623 / 812, ge=0, le=1)
+    still_inside: float = Field(default=43 / 812, ge=0, le=1)
+    needs_help: float = Field(default=5 / 812, ge=0, le=1)
+    seed: int = 42
