@@ -52,7 +52,7 @@ const QKEY = "dormsafe-offline-queue";
 const now = Date.now();
 const seedReports = (): Report[] => [
   { id: "rp1", category: "Gas Smell", floor: 6, area: "Corridor near Room 608 / Pantry", urgency: "Critical", description: "Strong gas smell near shared kitchen after shaking. 地震後共用廚房附近有強烈瓦斯味。", status: "NEW", at: now - 4 * 60000, by: "Resident R0412" },
-  { id: "rp2", category: "Blocked Route/Staircase", floor: 9, area: "East Stairwell B, 9F–10F landing", urgency: "High", description: "Ceiling debris blocking stairs between 9F and 10F. 9-10樓之間天花板掉落阻擋樓梯。", photo: debris, status: "NEW", at: now - 2 * 60000, by: "Resident R0598" },
+  { id: "rp2", category: "Blocked Route/Staircase", floor: 9, area: "East Stairwell B, 9F–10F landing", urgency: "High", description: "Ceiling debris blocking stairs between 9F and 10F. 9-10樓之間天花板掉落阻擋樓梯。", photo: debris, photoCredit: "Photo: New Taipei City Public Works Dept., 2024 (GWOIA, via Wikimedia Commons)", status: "NEW", at: now - 2 * 60000, by: "Resident R0598" },
 ];
 
 export function DormProvider({ children }: { children: ReactNode }) {

@@ -35,6 +35,8 @@ export interface Report {
   urgency: "Low" | "Medium" | "High" | "Critical";
   description: string;
   photo?: string | undefined;
+  /** Attribution for stock / open-data photos used in the demo seed. */
+  photoCredit?: string | undefined;
   status: ReportStatus;
   at: number;
   by: string;

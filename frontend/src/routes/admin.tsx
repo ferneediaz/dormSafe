@@ -218,7 +218,12 @@ function Reports() {
       {reports.map((r) => (
         <Card key={r.id}>
           <div className="flex gap-3">
-            {r.photo && <img src={r.photo} alt={`${r.category} photo`} loading="lazy" className="h-28 w-36 shrink-0 rounded-md object-cover" />}
+            {r.photo && (
+              <figure className="w-36 shrink-0">
+                <img src={r.photo} alt={`${r.category} photo`} loading="lazy" className="h-28 w-36 rounded-md object-cover" />
+                {r.photoCredit && <figcaption className="mt-0.5 text-[9px] leading-tight text-muted-foreground">{r.photoCredit}</figcaption>}
+              </figure>
+            )}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
                 <Chip tone={r.urgency === "Critical" || r.urgency === "High" ? "danger" : "warn"}>{r.urgency}</Chip>
