@@ -1,12 +1,14 @@
 # DormSafe
 
-**Real-time dormitory emergency accountability and coordination for Taiwan universities.**
+**Real-time dormitory safety, accountability and coordination for every dorm in Taiwan: school, company, factory and migrant-worker dorms.**
 
-> Taiwan universities already train students to evacuate during earthquakes and fires. DormSafe helps answer the harder questions after the alarm goes off: **Who is safe? Who is missing? Who needs help? What parts of the building are still usable?**
+> Taiwan dorms already run evacuation drills for earthquakes and fires. DormSafe helps answer the harder questions after the alarm goes off: **Who is safe? Who is missing? Who needs help? What parts of the building are still usable?**
 
-DormSafe turns a university dormitory into a live emergency coordination network during earthquakes, fires, and other disasters.
+DormSafe is a **phone + web app** (one codebase) that turns a dormitory into a live emergency coordination network during earthquakes, fires, and other disasters, and handles everyday safety the rest of the year (maintenance and hazard reports with photos, who is in or out, announcements).
 
-It combines student check-ins, roommate confirmation, floor-level incident reports, internal building hazards, and official Taiwan disaster information into a single operational view for students, resident assistants, dorm managers, campus security, and arriving responders.
+It combines resident check-ins, roommate confirmation, floor-level incident reports, internal building hazards, and official Taiwan disaster information into a single operational view for residents, floor leaders, dorm managers / coordinators, security, and arriving responders.
+
+> **Building it?** See [`HANDOVER.md`](HANDOVER.md) for the hackathon build plan, stack, team split and demo script. The examples below use a university dorm, but the same model applies to company and migrant-worker dorms run by coordinators.
 
 ---
 
@@ -462,7 +464,7 @@ The disaster context, shelters, public infrastructure, and other external inform
 
 # Why Dorms?
 
-University dormitories are particularly suitable for this model because they already have:
+Dormitories (university, company and migrant-worker) are particularly suitable for this model because they already have:
 
 - a defined resident roster;
 - known room assignments;
@@ -511,7 +513,7 @@ The proposed distinction is the combination of:
 }
 \]
 
-designed specifically around **Taiwan university dormitories and earthquake/disaster response**.
+designed specifically around **Taiwan dormitories (school, company and migrant-worker) and earthquake/disaster response**.
 
 The project should therefore be presented as improving the operational workflow between evacuation attendance and professional emergency response—not as replacing Taiwan's existing disaster infrastructure.
 
@@ -809,4 +811,4 @@ so that students can help one another, dorm staff can coordinate effectively, an
 
 # One-Line Pitch
 
-> **DormSafe turns Taiwan university dorm disaster response from a headcount into a live operational picture of who is safe, who needs help, what parts of the building are blocked, and where responders should look first.**
+> **DormSafe turns Taiwan dorm disaster response from a headcount into a live operational picture of who is safe, who needs help, what parts of the building are blocked, and where responders should look first.**
