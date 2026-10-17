@@ -45,7 +45,9 @@ export const ROOMS_PER_FLOOR = 17;
 export const TOTAL_RESIDENTS = 812;
 export const SIM_TARGETS = { SAFE: 623, INSIDE: 43, HELP: 5, UNKNOWN: 141 } as const;
 
-export const STATUS_META: Record<Status, { en: string; zh: string; emoji: string; tone: string }> = {
+export type Tone = "safe" | "inside" | "warn" | "danger" | "unknown";
+
+export const STATUS_META: Record<Status, { en: string; zh: string; emoji: string; tone: Tone }> = {
   SAFE: { en: "Safe / Evacuated", zh: "安全／已撤離", emoji: "✅", tone: "safe" },
   INSIDE: { en: "Safe, Still Inside", zh: "安全但仍在室內", emoji: "🟡", tone: "warn" },
   HELP: { en: "Need Help", zh: "需要協助", emoji: "🔴", tone: "danger" },

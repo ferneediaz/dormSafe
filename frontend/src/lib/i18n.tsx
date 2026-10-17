@@ -72,6 +72,17 @@ const D: Dict = {
   typhoon: ["颱風", "Typhoon", "Bagyo", "Topan"],
   tsunami: ["海嘯", "Tsunami", "Tsunami", "Tsunami"],
   fire: ["火災", "Fire", "Sunog", "Kebakaran"],
+  activeAlert: ["緊急狀態", "Emergency active", "Aktibong emergency", "Darurat aktif"],
+  loadingAlerts: ["正在載入警報…", "Loading alerts…", "Naglo-load ng mga alerto…", "Memuat peringatan…"],
+  view3d: ["3D 建築即時圖", "Live 3D building", "Live 3D na gusali", "Gedung 3D langsung"],
+  viewExterior: ["外觀", "Exterior", "Panlabas", "Eksterior"],
+  viewXray: ["透視", "X-ray", "X-ray", "X-ray"],
+  viewExploded: ["分層", "Exploded", "Hiwalay", "Terurai"],
+  viewPlan: ["平面圖", "Plan", "Plano", "Denah"],
+  tapFloor: ["點選樓層查看內部", "Click a floor to look inside", "I-click ang palapag para makita ang loob", "Klik lantai untuk melihat ke dalam"],
+  roomList: ["逐房名單", "Room list", "Listahan ng kuwarto", "Daftar kamar"],
+  loading3d: ["載入 3D 模型…", "Loading 3D model…", "Naglo-load ng 3D…", "Memuat model 3D…"],
+  moreAlerts: ["則警報", "more alerts", "pang alerto", "peringatan lain"],
 };
 const IDX: Record<Lang, number> = { zh: 0, en: 1, fil: 2, id: 3 };
 

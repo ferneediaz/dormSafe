@@ -1,5 +1,5 @@
 import tailwindcss from "@tailwindcss/vite";
-import { tanstackBuildConfig } from "@tanstack/react-start/config";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import path from "node:path";
 import { defineConfig } from "vite";
@@ -7,7 +7,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [
     tailwindcss(),
-    tanstackBuildConfig(),
+    tanstackStart(),
     viteReact(),
   ],
   resolve: {
@@ -19,7 +19,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/external": {
-        target: process.env.VITE_DORMSAFE_API_URL || "http://localhost:8000",
+        target: process.env["VITE_DORMSAFE_API_URL"] || "http://localhost:8000",
         changeOrigin: true,
       },
     },

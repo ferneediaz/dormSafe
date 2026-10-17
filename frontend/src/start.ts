@@ -1,6 +1,6 @@
-import { createMiddleware, registerGlobalMiddleware } from "@tanstack/react-start";
+import { createMiddleware, createStart } from "@tanstack/react-start";
 
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = process.env["NODE_ENV"] === "production";
 
 const CSRF_PROTECTED_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -45,6 +45,6 @@ const csrfMiddleware = createMiddleware().server(async ({ next, request }) => {
   });
 });
 
-registerGlobalMiddleware({
-  middleware: [csrfMiddleware],
-});
+export const startInstance = createStart(() => ({
+  requestMiddleware: [csrfMiddleware],
+}));

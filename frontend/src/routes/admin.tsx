@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ClipboardCopy, FileText, Printer, Siren, ShieldCheck, UserCheck } from "lucide-react";
+import { ClipboardCopy, FileText, Printer, RotateCcw, Siren, ShieldCheck, Square, UserCheck, Zap } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDorm } from "@/lib/dorm-store";
 import { STATUS_META, counts, priorityList, type ReportStatus, type RouteStatus, type Status } from "@/lib/dorm-data";
 import { Card, Chip, StatusBadge, ago, toneBg } from "@/components/dorm/ui";
 import { cn } from "@/lib/utils";
 import { useT, type TKey } from "@/lib/i18n";
-import { ROLE_META, can, type AccessRole } from "@/lib/privacy";
+import { ACCESS_PERMS, ROLE_META, can, type AccessRole } from "@/lib/privacy";
+import { BuildingView } from "@/components/dorm/building3d/BuildingView";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -32,7 +33,7 @@ const TABS = [
 function AdminPage() {
   const [tab, setTab] = useState<(typeof TABS)[number][0]>("overview");
   const [handoff, setHandoff] = useState(false);
-  const { reports, role, setRole } = useDorm();
+  const { reports, role, setRole, emergency, streaming, startRollCall, endEmergency } = useDorm();
   const { t } = useT();
   const newReports = reports.filter((r) => r.status === "NEW").length;
   return (
@@ -50,6 +51,18 @@ function AdminPage() {
             {(Object.keys(ROLE_META) as AccessRole[]).map((r) => <option key={r} value={r}>{ROLE_META[r].en} {ROLE_META[r].zh}</option>)}
           </select>
         </label>
+        {ACCESS_PERMS[role].canTriggerRollCall && (
+          <div className="flex gap-1">
+            <button onClick={startRollCall} className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+              {emergency ? <RotateCcw className="h-4 w-4" /> : <Zap className="h-4 w-4" />} {t(emergency ? "restart" : "simulate")}
+            </button>
+            {emergency && (
+              <button onClick={endEmergency} className="inline-flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm font-semibold hover:bg-muted">
+                <Square className="h-3.5 w-3.5" /> {t("endDrill")}{streaming && <span className="h-2 w-2 animate-pulse rounded-full bg-danger" />}
+              </button>
+            )}
+          </div>
+        )}
         <button onClick={() => setHandoff(true)} className=" inline-flex items-center gap-2 rounded-md bg-danger px-4 py-2 text-sm font-semibold text-danger-foreground hover:bg-danger/90">
           <FileText className="h-4 w-4" /> {t("handoff")}
         </button>
@@ -71,6 +84,7 @@ function Overview() {
   const c = counts(residents);
   const canRoutes = can(role, "manageRoutes");
   const [floor, setFloor] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number | null>(can(role, "viewAllFloors") ? null : wardenFloor);
   const prio = priorityList(residents);
   const floors = useMemo(() => Array.from({ length: 12 }, (_, i) => 12 - i).filter((f) => residents.some((r) => r.floor === f)).map((f) => {
     const rs = residents.filter((r) => r.floor === f);
@@ -95,10 +109,14 @@ function Overview() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <div className="min-w-0 space-y-4">
+        <Card title={t("view3d")} zh={can(role, "viewAllFloors") ? undefined : `(${wardenFloor}F only)`}>
+          <BuildingView residents={residents} selectedFloor={selected} onSelectFloor={setSelected} onOpenFloor={setFloor} />
+        </Card>
         <Card title={t("matrix")} zh={can(role, "viewAllFloors") ? undefined : `(${wardenFloor}F only)`} action={<span className="text-xs text-muted-foreground">Click a floor 點選樓層</span>}>
           <div className="space-y-1.5">
             {floors.map(({ f, total, c, flags }) => (
-              <button key={f} onClick={() => setFloor(f)} className="flex w-full items-center gap-3 rounded-lg border p-2 text-left hover:bg-muted">
+              <button key={f} onClick={() => { setSelected(f); setFloor(f); }} className={cn("flex w-full items-center gap-3 rounded-lg border p-2 text-left hover:bg-muted", selected === f && "border-primary ring-1 ring-primary")}>
                 <span className="w-10 font-display text-lg font-bold">{f}F</span>
                 <div className="flex h-5 flex-1 overflow-hidden rounded bg-muted">
                   {(["SAFE", "INSIDE", "HELP", "UNKNOWN"] as Status[]).map((s) => (
@@ -111,6 +129,7 @@ function Overview() {
             ))}
           </div>
         </Card>
+        </div>
 
         <div className="space-y-4">
           <Card title={t("priority")}>

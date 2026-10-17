@@ -54,6 +54,41 @@ export const ACCESS_PERMS: Record<AccessRole, RolePermissions> = {
   },
 };
 
+export const ROLE_META: Record<AccessRole, { en: string; zh: string; desc: string }> = {
+  COORDINATOR: { en: "Coordinator", zh: "管理員", desc: ACCESS_PERMS.COORDINATOR.description },
+  FLOOR_WARDEN: { en: "Floor warden", zh: "樓層負責人", desc: ACCESS_PERMS.FLOOR_WARDEN.description },
+  FIRST_RESPONDER: { en: "First responder", zh: "救援人員", desc: ACCESS_PERMS.FIRST_RESPONDER.description },
+  RESIDENT: { en: "Resident", zh: "住民", desc: ACCESS_PERMS.RESIDENT.description },
+};
+
+export type Permission =
+  | "viewAllFloors"
+  | "viewContacts"
+  | "viewLocations"
+  | "manageRoutes"
+  | "manageReports"
+  | "manageBuilding"
+  | "managePrivacy";
+
+export function can(role: AccessRole, what: Permission): boolean {
+  const p = ACCESS_PERMS[role];
+  switch (what) {
+    case "viewAllFloors":
+      return p.floorScope === undefined;
+    case "viewContacts":
+      return p.canViewPhone;
+    case "viewLocations":
+      return p.canViewMedicalNotes;
+    case "manageRoutes":
+      return p.canManageRoutes;
+    case "manageReports":
+      return role === "COORDINATOR" || role === "FLOOR_WARDEN";
+    case "manageBuilding":
+    case "managePrivacy":
+      return role === "COORDINATOR";
+  }
+}
+
 export interface LocationEvent {
   residentId: string;
   location: string;
