@@ -4,7 +4,7 @@ import { ClipboardCopy, FileText, Printer, RotateCcw, Siren, ShieldCheck, Square
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useDorm } from "@/lib/dorm-store";
 import { STATUS_META, counts, priorityList, type ReportStatus, type RouteStatus, type Status } from "@/lib/dorm-data";
-import { Card, Chip, StatusBadge, ago, toneBg } from "@/components/dorm/ui";
+import { Card, Chip, StatusBadge, StatusPicker, ago, toneBg } from "@/components/dorm/ui";
 import { cn } from "@/lib/utils";
 import { useT, type TKey } from "@/lib/i18n";
 import { ACCESS_PERMS, ROLE_META, can, type AccessRole } from "@/lib/privacy";
@@ -78,11 +78,12 @@ function AdminPage() {
 }
 
 function Overview() {
-  const { residents: all, routes, setRoute, verifyRoute, emergency, role, wardenFloor } = useDorm();
+  const { residents: all, routes, setRoute, verifyRoute, setStatus, emergency, role, wardenFloor } = useDorm();
   const { t } = useT();
   const residents = can(role, "viewAllFloors") ? all : all.filter((r) => r.floor === wardenFloor);
   const c = counts(residents);
   const canRoutes = can(role, "manageRoutes");
+  const canStatus = can(role, "updateStatus");
   const [floor, setFloor] = useState<number | null>(null);
   const [selected, setSelected] = useState<number | null>(can(role, "viewAllFloors") ? null : wardenFloor);
   const prio = priorityList(residents);
@@ -143,6 +144,7 @@ function Overview() {
                     </div>
                     {r.mobility && <p className="mt-1 text-xs font-medium text-danger">♿ {r.mobility}</p>}
                     <p className="text-xs text-muted-foreground">{r.lang}{can(role, "viewContacts") && ` · ☎ ${r.contact}`}{can(role, "viewLocations") && r.location && ` · 📍 ${r.location}`}</p>
+                    {canStatus && <div className="mt-1.5 flex items-center justify-between gap-2"><span className="text-xs text-muted-foreground">Update 更新</span><StatusPicker value={r.status} onChange={(s) => setStatus(r.id, s)} /></div>}
                   </li>
                 ))}
               </ul>
@@ -176,7 +178,8 @@ function Overview() {
 }
 
 function FloorModal({ floor, onClose }: { floor: number | null; onClose: () => void }) {
-  const { residents } = useDorm();
+  const { residents, role, setStatus } = useDorm();
+  const canStatus = can(role, "updateStatus");
   const rooms = useMemo(() => {
     const m = new Map<number, typeof residents>();
     residents.filter((r) => r.floor === floor).forEach((r) => m.set(r.room, [...(m.get(r.room) ?? []), r]));
@@ -196,7 +199,11 @@ function FloorModal({ floor, onClose }: { floor: number | null; onClose: () => v
                   {rs.map((r) => (
                     <li key={r.id} className="flex items-center justify-between gap-1">
                       <span className="truncate">{r.mobility && "♿ "}{r.sos && "🆘 "}{r.name}</span>
-                      <span title={STATUS_META[r.status].en}>{STATUS_META[r.status].emoji}{r.provenance === "PEER_CONFIRMED" && <span className="ml-1 text-[10px] text-muted-foreground">peer</span>}</span>
+                      <span className="flex shrink-0 items-center gap-1">
+                        {r.provenance === "PEER_CONFIRMED" && <span className="text-[10px] text-muted-foreground">peer</span>}
+                        {r.provenance === "STAFF" && <span className="text-[10px] text-muted-foreground">staff</span>}
+                        {canStatus ? <StatusPicker value={r.status} onChange={(s) => setStatus(r.id, s)} /> : <span title={STATUS_META[r.status].en}>{STATUS_META[r.status].emoji}</span>}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -247,7 +254,8 @@ function Reports() {
 }
 
 function Roster() {
-  const { residents } = useDorm();
+  const { residents, role, setStatus } = useDorm();
+  const canStatus = can(role, "updateStatus");
   const [q, setQ] = useState("");
   const [vuln, setVuln] = useState(false);
   const list = residents.filter((r) => (!vuln || r.mobility) && (`${r.name} ${r.room} ${r.lang}`.toLowerCase().includes(q.toLowerCase())));
@@ -264,7 +272,8 @@ function Roster() {
             {list.slice(0, 200).map((r) => (
               <tr key={r.id} className="border-t">
                 <td className="py-1.5 font-semibold">{r.room}</td><td>{r.name}</td><td>{r.lang}</td><td>{r.contact}</td>
-                <td className="text-xs text-danger">{r.mobility}</td><td><StatusBadge s={r.status} /></td>
+                <td className="text-xs text-danger">{r.mobility}</td>
+                <td><div className="flex items-center gap-2"><StatusBadge s={r.status} size="sm" />{canStatus && <StatusPicker value={r.status} onChange={(s) => setStatus(r.id, s)} />}</div></td>
               </tr>
             ))}
           </tbody>

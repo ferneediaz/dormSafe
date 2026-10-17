@@ -5,7 +5,7 @@ import {
   ME_ID, ROOMMATE_ID, seedResidents, seedRoutes, simulationPlan,
   type EvacRoute, type Report, type ReportStatus, type Resident, type RouteStatus, type Status,
 } from "./dorm-data";
-import { purgeExpired, type AccessRole, type LocationEvent } from "./privacy";
+import { can, purgeExpired, type AccessRole, type LocationEvent } from "./privacy";
 
 interface Building { name: string; address: string; floors: number; rooms: number }
 export type QueuedAction = { kind: "checkin" | "sos" | "peer"; id: string; status?: Status | undefined; location?: string | undefined; at: number };
@@ -37,6 +37,8 @@ interface Store {
   checkIn: (id: string, s: Status, location?: string) => void;
   sos: (id: string, location?: string) => void;
   peerConfirm: (id: string) => void;
+  /** Coordinator override of a resident's status (provenance STAFF). */
+  setStatus: (id: string, s: Status) => void;
   addReport: (r: Omit<Report, "id" | "at" | "status">) => void;
   setReportStatus: (id: string, s: ReportStatus) => void;
   setRoute: (id: string, s: RouteStatus) => void;
@@ -157,6 +159,12 @@ export function DormProvider({ children }: { children: ReactNode }) {
     checkIn: (id, s, location) => dispatch({ kind: "checkin", id, status: s, location, at: Date.now() }),
     sos: (id, location) => dispatch({ kind: "sos", id, location, at: Date.now() }),
     peerConfirm: (id) => dispatch({ kind: "peer", id, at: Date.now() }),
+    setStatus: (id, s) => {
+      if (!can(role, "updateStatus")) return;
+      patch(id, { status: s, provenance: "STAFF", ...(s !== "HELP" && { sos: false }) });
+      const r = residents.find((x) => x.id === id);
+      setAccessLog((l) => [{ at: Date.now(), role, what: `Set ${r?.name ?? id} (Room ${r?.room}) → ${s}` }, ...l].slice(0, 50));
+    },
     addReport: (r) => setReports((rs) => [{ ...r, id: `rp${Date.now()}`, at: Date.now(), status: "NEW" }, ...rs]),
     setReportStatus: (id, s) => setReports((rs) => rs.map((r) => (r.id === id ? { ...r, status: s } : r))),
     setRoute: (id, s) => setRoutes((rs) => rs.map((r) => (r.id === id ? { ...r, status: s, verified: "STAFF" } : r))),

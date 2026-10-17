@@ -22,6 +22,29 @@ export function StatusBadge({ s, size = "md" }: { s: Status; size?: "sm" | "md" 
   );
 }
 
+const STATUSES: Status[] = ["SAFE", "INSIDE", "HELP", "UNKNOWN"];
+
+/** Compact segmented control for staff to set a resident's status. */
+export function StatusPicker({ value, onChange }: { value: Status; onChange: (s: Status) => void }) {
+  return (
+    <span className="inline-flex shrink-0 gap-0.5 rounded-md border bg-card p-0.5">
+      {STATUSES.map((s) => (
+        <button
+          key={s}
+          type="button"
+          title={`${STATUS_META[s].en} ${STATUS_META[s].zh}`}
+          aria-label={`Set ${STATUS_META[s].en}`}
+          aria-pressed={value === s}
+          onClick={(e) => { e.stopPropagation(); if (value !== s) onChange(s); }}
+          className={cn("rounded px-1 py-0.5 text-xs leading-none", value === s ? cn("border", toneBg[STATUS_META[s].tone]) : "opacity-50 hover:bg-muted hover:opacity-100")}
+        >
+          {STATUS_META[s].emoji}
+        </button>
+      ))}
+    </span>
+  );
+}
+
 export function Chip({ tone = "unknown", children }: { tone?: "safe" | "inside" | "warn" | "danger" | "unknown"; children: ReactNode }) {
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium", toneBg[tone])}>

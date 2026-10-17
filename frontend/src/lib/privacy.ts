@@ -67,6 +67,7 @@ export type Permission =
   | "viewLocations"
   | "manageRoutes"
   | "manageReports"
+  | "updateStatus"
   | "manageBuilding"
   | "managePrivacy";
 
@@ -83,6 +84,7 @@ export function can(role: AccessRole, what: Permission): boolean {
       return p.canManageRoutes;
     case "manageReports":
       return role === "COORDINATOR" || role === "FLOOR_WARDEN";
+    case "updateStatus":
     case "manageBuilding":
     case "managePrivacy":
       return role === "COORDINATOR";
