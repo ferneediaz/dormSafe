@@ -10,3 +10,11 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 .env
+
+# JS / Expo
+node_modules/
+.expo/
+expo-env.d.ts
+
+# macOS
+.DS_Store
