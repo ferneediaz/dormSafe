@@ -3,7 +3,8 @@ import { km } from "./dorm-data";
 /** Base URL of the DormSafe backend (branch "ale"). Override with VITE_DORMSAFE_API_URL. */
 export const API_BASE: string = (import.meta.env['VITE_DORMSAFE_API_URL'] as string | undefined) ?? "http://localhost:8000";
 
-export type Provenance = "live" | "cached" | "frozen";
+/** "sample" = made-up demo rows shown only when the backend is unreachable. */
+export type Provenance = "live" | "cached" | "frozen" | "sample";
 export type DisasterType = "earthquake" | "flood" | "landslide" | "typhoon" | "tsunami" | "fire";
 export const DISASTER_TYPES: DisasterType[] = ["earthquake", "flood", "landslide", "typhoon", "tsunami", "fire"];
 
@@ -114,7 +115,7 @@ export async function fetchAlerts(): Promise<Feed<AlertItem>> {
     const { body, mode } = await getJSON("/external/alerts");
     return { items: listOf(body).map(normalizeAlert), provenance: provOf(body, mode, "live"), source: "NCDR CAP", fetchedAt: Date.now() };
   } catch {
-    return { items: FALLBACK_ALERTS, provenance: "frozen", source: "NCDR CAP (built-in snapshot)", fetchedAt: Date.now() };
+    return { items: FALLBACK_ALERTS, provenance: "sample", source: "Sample data (backend offline)", fetchedAt: Date.now() };
   }
 }
 
@@ -126,23 +127,25 @@ export async function fetchShelters(lat: number, lon: number, radiusKm: number):
     return { items, provenance: provOf(body, mode, "live"), source: "NFA dataset 73242", fetchedAt: Date.now() };
   } catch {
     const items = FALLBACK_SHELTERS.map((o, i) => normalizeShelter(o, i, origin)).filter((s) => s.distanceKm <= radiusKm).sort((a, b) => a.distanceKm - b.distanceKm);
-    return { items, provenance: "frozen", source: "NFA dataset 73242 (built-in snapshot)", fetchedAt: Date.now() };
+    return { items, provenance: "sample", source: "Sample data (backend offline)", fetchedAt: Date.now() };
   }
 }
 
-// Snapshot shaped like the NCDR CAP feed, used when the backend is unreachable.
+// SAMPLE rows shaped like the NCDR CAP feed, used only when the backend is unreachable.
+// These events are made up; the real snapshot lives in data/frozen/ and is served by the backend.
 export const FALLBACK_ALERTS: AlertItem[] = [
-  { id: "CWA-EQ-2026-1017", eventType: "地震 Earthquake", headline: "M5.8 earthquake off Hualien County; intensity 4 in Taipei / New Taipei. 花蓮縣近海規模5.8地震，雙北震度4級。", severity: "Severe", areas: ["花蓮縣", "宜蘭縣", "新北市", "臺北市"], sent: "2026-10-17T06:58:00+08:00", source: "NCDR / CWA" },
-  { id: "CWA-RAIN-2026-1017", eventType: "豪雨 Heavy Rain", headline: "Heavy rain advisory for northern mountainous areas. 北部山區豪雨特報。", severity: "Moderate", areas: ["新北市", "桃園市"], sent: "2026-10-17T05:30:00+08:00", source: "NCDR / CWA" },
+  { id: "CWA-EQ-2026-1017", eventType: "地震 Earthquake", headline: "[SAMPLE] M5.8 earthquake off Hualien County; intensity 4 in Taipei / New Taipei. 花蓮縣近海規模5.8地震，雙北震度4級。", severity: "Severe", areas: ["花蓮縣", "宜蘭縣", "新北市", "臺北市"], sent: "2026-10-17T06:58:00+08:00", source: "NCDR / CWA" },
+  { id: "CWA-RAIN-2026-1017", eventType: "豪雨 Heavy Rain", headline: "[SAMPLE] Heavy rain advisory for northern mountainous areas. 北部山區豪雨特報。", severity: "Moderate", areas: ["新北市", "桃園市"], sent: "2026-10-17T05:30:00+08:00", source: "NCDR / CWA" },
 ];
 
-// Rows shaped like NFA open data 73242 (Chinese column names).
+// SAMPLE rows shaped like NFA open data 73242 (Chinese column names). No manager phones:
+// the real dataset's phones are personal data and the backend drops them too.
 export const FALLBACK_SHELTERS: Raw[] = [
-  { 序號: "F01", 避難收容處所名稱: "板橋國民運動中心", 避難收容處所地址: "新北市板橋區漢生東路278號", 緯度: 25.0186, 經度: 121.4706, 預計收容人數: 1200, 適用災害類別: "地震、水災", 適合避難弱者安置: "是", 管理人電話: "02-2960-3456" },
-  { 序號: "F02", 避難收容處所名稱: "新埔國小", 避難收容處所地址: "新北市板橋區文化路二段182巷", 緯度: 25.0222, 經度: 121.4672, 預計收容人數: 650, 適用災害類別: "地震", 適合避難弱者安置: "否", 管理人電話: "02-2257-4371" },
-  { 序號: "F03", 避難收容處所名稱: "板橋第一運動場", 避難收容處所地址: "新北市板橋區漢生東路278號", 緯度: 25.0167, 經度: 121.4689, 預計收容人數: 3000, 適用災害類別: "地震、颱風", 適合避難弱者安置: "是", 管理人電話: "02-2960-8899" },
-  { 序號: "F04", 避難收容處所名稱: "江翠國中", 避難收容處所地址: "新北市板橋區松江街63號", 緯度: 25.0281, 經度: 121.4769, 預計收容人數: 800, 適用災害類別: "地震、水災、土石流", 適合避難弱者安置: "是", 管理人電話: "02-2253-1747" },
-  { 序號: "F05", 避難收容處所名稱: "海山高中", 避難收容處所地址: "新北市板橋區漢生東路215號", 緯度: 25.0206, 經度: 121.4733, 預計收容人數: 1000, 適用災害類別: "水災、颱風", 適合避難弱者安置: "否", 管理人電話: "02-2951-7475" },
-  { 序號: "F06", 避難收容處所名稱: "臺北市萬華區老松國小", 避難收容處所地址: "臺北市萬華區桂林路64號", 緯度: 25.0376, 經度: 121.5007, 預計收容人數: 900, 適用災害類別: "地震、水災", 適合避難弱者安置: "是", 管理人電話: "02-2308-6802" },
-  { 序號: "F07", 避難收容處所名稱: "土城國民運動中心", 避難收容處所地址: "新北市土城區金城路二段247號", 緯度: 24.9839, 經度: 121.4487, 預計收容人數: 1100, 適用災害類別: "地震、颱風、水災", 適合避難弱者安置: "是", 管理人電話: "02-2266-6277" },
+  { 序號: "F01", 避難收容處所名稱: "板橋國民運動中心", 避難收容處所地址: "新北市板橋區漢生東路278號", 緯度: 25.0186, 經度: 121.4706, 預計收容人數: 1200, 適用災害類別: "地震、水災", 適合避難弱者安置: "是" },
+  { 序號: "F02", 避難收容處所名稱: "新埔國小", 避難收容處所地址: "新北市板橋區文化路二段182巷", 緯度: 25.0222, 經度: 121.4672, 預計收容人數: 650, 適用災害類別: "地震", 適合避難弱者安置: "否" },
+  { 序號: "F03", 避難收容處所名稱: "板橋第一運動場", 避難收容處所地址: "新北市板橋區漢生東路278號", 緯度: 25.0167, 經度: 121.4689, 預計收容人數: 3000, 適用災害類別: "地震、颱風", 適合避難弱者安置: "是" },
+  { 序號: "F04", 避難收容處所名稱: "江翠國中", 避難收容處所地址: "新北市板橋區松江街63號", 緯度: 25.0281, 經度: 121.4769, 預計收容人數: 800, 適用災害類別: "地震、水災、土石流", 適合避難弱者安置: "是" },
+  { 序號: "F05", 避難收容處所名稱: "海山高中", 避難收容處所地址: "新北市板橋區漢生東路215號", 緯度: 25.0206, 經度: 121.4733, 預計收容人數: 1000, 適用災害類別: "水災、颱風", 適合避難弱者安置: "否" },
+  { 序號: "F06", 避難收容處所名稱: "臺北市萬華區老松國小", 避難收容處所地址: "臺北市萬華區桂林路64號", 緯度: 25.0376, 經度: 121.5007, 預計收容人數: 900, 適用災害類別: "地震、水災", 適合避難弱者安置: "是" },
+  { 序號: "F07", 避難收容處所名稱: "土城國民運動中心", 避難收容處所地址: "新北市土城區金城路二段247號", 緯度: 24.9839, 經度: 121.4487, 預計收容人數: 1100, 適用災害類別: "地震、颱風、水災", 適合避難弱者安置: "是" },
 ];

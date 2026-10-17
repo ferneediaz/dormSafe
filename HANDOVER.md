@@ -129,7 +129,7 @@ dormSafe/
 
 ### 3.3 Dual-Layer Reliability (Client & Server Fallbacks)
 1. **Server Layer**: If the live NCDR API is unreachable, the FastAPI backend transparently serves cached responses or falls back to `data/frozen/` with `X-Data-Mode: frozen_real`.
-2. **Client Layer**: If the FastAPI backend itself is offline or unreachable, `frontend/src/lib/external-api.ts` automatically switches to built-in fallback fixtures (`FALLBACK_ALERTS` and `FALLBACK_SHELTERS`), ensuring the application remains interactive during field operations.
+2. **Client Layer**: If the FastAPI backend itself is offline or unreachable, `frontend/src/lib/external-api.ts` automatically switches to built-in fallback fixtures (`FALLBACK_ALERTS` and `FALLBACK_SHELTERS`) so the UI stays interactive. These are **made-up sample rows, labelled SAMPLE in the UI**, not real alerts or shelters; the real frozen snapshot comes from the backend (`data/frozen/`).
 
 ---
 
