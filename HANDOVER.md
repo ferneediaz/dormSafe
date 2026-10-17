@@ -357,4 +357,4 @@ Real auth/onboarding · push notifications (fake with an in-app banner) · backg
 ## 14. Current repo status
 - `readme.md`: full vision / pitch (the "why"): resident states, peer confirmation, floor-leader view, stairwell status, incident grouping, tasks, responder handoff, privacy, non-goals. Examples use a university dorm; scope is all dorms.
 - `HANDOVER.md`: this file.
-- No code yet. **Next step:** Dev C runs §7 setup and pushes the scaffold.
+- **Branch `Luke`: working web app in `web/`** (React + Vite + TypeScript, web-only for the hackathon instead of Expo). Resident side (`/#/resident/<id>`) and admin side (`/#/admin`) both work, and the full §11 demo runs end to end. State lives in the browser (localStorage + live sync between tabs), so no backend is needed for the demo. See `web/README.md` for how to run it, the demo steps, and how to swap in Supabase.
