@@ -11,12 +11,14 @@
   --unknown: #9aa3b0;
   --out: #6366f1;
   --haz: #ea580c;
+  --info-bg: #dbeafe;
+  --info-ink: #1e3a8a;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'Noto Sans TC', sans-serif;
   color: var(--ink);
   background: var(--bg);
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0f1115;
     --card: #181b22;
     --ink: #e8eaee;
@@ -24,7 +26,22 @@
     --line: #2a2f39;
     --brand: #5aa2e6;
     --unknown: #5b6370;
+    --info-bg: #1e3a5f;
+    --info-ink: #dbeafe;
+    color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+    --bg: #0f1115;
+    --card: #181b22;
+    --ink: #e8eaee;
+    --muted: #98a1ae;
+    --line: #2a2f39;
+    --brand: #5aa2e6;
+    --unknown: #5b6370;
+    --info-bg: #1e3a5f;
+    --info-ink: #dbeafe;
+    color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); }
@@ -83,7 +100,7 @@ select { width: auto; }
 .banner { padding: 10px 14px; border-radius: 10px; margin: 10px 12px 0; }
 .banner-danger { background: var(--help); color: #fff; }
 .banner-danger .muted { color: #fecaca; }
-.banner-info { background: #dbeafe; color: #1e3a8a; }
+.banner-info { background: var(--info-bg); color: var(--info-ink); }
 
 /* ---------- landing ---------- */
 .landing { max-width: 920px; margin: 0 auto; padding: 32px 16px; }

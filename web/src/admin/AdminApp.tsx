@@ -376,7 +376,6 @@ function Handoff() {
       <div className="row gap">
         <h3 className="grow">Responder handoff</h3>
         <button className="btn btn-sm" onClick={async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ } }}>{copied ? 'Copied ✓' : 'Copy'}</button>
-        <button className="btn btn-sm" onClick={() => window.print()}>Print</button>
       </div>
       <pre className="handoff">{text}</pre>
     </section>
@@ -388,6 +387,7 @@ function DataTab() {
   const [key, setKey] = useState(cwaKey.get());
   const [msg, setMsg] = useState('');
   const [ann, setAnn] = useState('');
+  const [confirmReset, setConfirmReset] = useState(false);
   const isSample = s.shelters.some((x) => x.sample);
   const [url, setUrl] = useState(s.backend?.url ?? 'http://localhost:8000');
   const [connecting, setConnecting] = useState(false);
@@ -454,7 +454,15 @@ function DataTab() {
 
         <section className="card form">
           <h3>Demo</h3>
-          <button className="btn btn-danger" onClick={() => { if (confirm('Reset all demo data?')) actions.reset(); }}>Reset demo data</button>
+          {confirmReset ? (
+            <div className="row gap wrap">
+              <span className="small">Clear all check-ins, reports and settings?</span>
+              <button className="btn btn-danger" onClick={() => { actions.reset(); setConfirmReset(false); setMsg('Demo data reset'); }}>Yes, reset</button>
+              <button className="btn" onClick={() => setConfirmReset(false)}>Cancel</button>
+            </div>
+          ) : (
+            <button className="btn btn-danger" onClick={() => setConfirmReset(true)}>Reset demo data</button>
+          )}
         </section>
       </div>
 
