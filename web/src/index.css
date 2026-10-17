@@ -46,7 +46,11 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); }
 a { color: var(--brand); }
+h1, h2, h3, h4, b, strong, .admin-title, .phone-title, .fl, .kpi-n, .status-big, .num, th, td, label, p, li, pre { color: inherit; }
+body, .card, .admin, .phone, .landing { color: var(--ink); }
 h1, h2, h3 { margin: 0 0 8px; }
+:root h1, :root h2, :root h3, :root h4 { color: var(--ink) !important; }
+:root b, :root strong { color: inherit !important; }
 h3 { font-size: 15px; }
 p { margin: 6px 0; }
 .muted { color: var(--muted); }

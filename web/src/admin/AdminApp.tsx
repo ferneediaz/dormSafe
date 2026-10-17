@@ -400,6 +400,9 @@ function DataTab() {
             Connect to the FastAPI backend (branch <b>ale</b>: <code>uvicorn dormsafe.api:app --host 0.0.0.0</code>) so phones and laptops share
             one live state, with real NCDR alerts and NFA shelters. Without it, the app runs in local demo mode (one browser only).
           </p>
+          {!['localhost', '127.0.0.1'].includes(location.hostname) && !/^(192\.168|10\.|172\.)/.test(location.hostname) && !s.backend?.connected && (
+            <p className="small"><b>This is a hosted preview, so it can't reach a backend running on your laptop.</b> Run the app on your laptop (<code>npm run dev</code>) to connect.</p>
+          )}
           {s.backend?.connected ? (
             <>
               <p className="small">Connected to <b>{s.backend.url}</b> · alerts: {s.backend.alertsMode ?? '?'} · shelters: {s.backend.sheltersMode ?? '?'} ({s.shelters.length} within radius){s.backend.error ? <><br /><b className="c-help">{s.backend.error}</b></> : null}</p>
