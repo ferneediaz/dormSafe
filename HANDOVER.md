@@ -13,7 +13,8 @@
   - **Admin / Coordinator** (web or phone): building → floors → rooms → residents, live headcount (who's in, who's out, who's unaccounted for), incoming reports, emergency roll call.
 - **Taiwan open data:** earthquake/disaster alerts (NCDR / CWA) plus NFA evacuation shelters (locations, capacity, open/full status).
 - **Stack:** Expo (React Native + TypeScript) for **one codebase that runs on iOS, Android and web**, with Supabase (Postgres, Auth, Storage, Realtime) as the backend.
-- **Rule for today:** if it isn't in the demo script (§8), we don't build it.
+- **Rule for today:** if it isn't in the demo script (§11), we don't build it.
+- **One story everywhere:** the pitch (`readme.md`), the seed data and the live demo all use the same scenario: **Dorm A, 12 floors, 812 residents, Room 912 needs mobility help, East Stairwell B blocked on 9F, West Stairwell A usable, possible gas leak on 6F.**
 
 ---
 
@@ -68,7 +69,8 @@ For the hackathon we use **2 hard-coded demo accounts** (1 admin + 1 resident) p
 | A3 | **Live headcount dashboard**: totals (Safe / Inside / Need help / Unknown) plus a **floor grid** colored by status, updating in realtime | P0, **the hero screen** |
 | A4 | **Reports inbox**: list with photo, category, floor/room, status (New → In progress → Resolved) | P0 |
 | A5 | **Start emergency roll call**: resets everyone to Unknown and pushes "Are you safe?" | P0 (the push can be faked with an in-app banner) |
-| A6 | **Responder handoff summary**: one screen/text block with unaccounted count, people who need help, hazards by floor | P1 |
+| A6 | **Responder handoff summary**: one screen/text block with unaccounted count, people who need help, hazards by floor, stairwell status | P1 |
+| A9 | **Stairwell / exit status**: each stairwell, exit and elevator marked Open / Blocked / Unknown, with a "Reported" vs "Staff verified" tag; shown as chips on the floor grid. Residents set it from the report screen (category "blocked route"); admin verifies with one tap | **P0** (small: 1 table + chips; it's the README's core idea) |
 | A7 | Announcements/broadcast to all residents | P1 |
 | A8 | Drill mode, fire-equipment inspection checklist, visitor log, audit log, CSV import of residents | P2 |
 
@@ -192,7 +194,7 @@ src/
   data/samples/*.json         # fallback API responses
 supabase/
   schema.sql
-  seed.sql                    # 1 building, 6 floors, ~60 fake residents
+  seed.sql                    # Dorm A: 12 floors, 812 fake residents, routes
 ```
 
 ---
@@ -241,17 +243,38 @@ create table roll_calls (
 create table reports (
   id uuid primary key default gen_random_uuid(),
   building_id uuid references buildings, resident_id uuid references residents,
-  category text not null,                 -- fire|smoke|gas|leak|electrical|structural|broken|other
+  category text not null,                 -- fire|smoke|gas|leak|electrical|structural|blocked_route|broken|other
   description text, photo_url text, floor int, room text,
   urgency text default 'normal',          -- 'normal' | 'emergency'
   status text default 'new',              -- new|in_progress|resolved
   created_at timestamptz default now()
 );
 
+create table routes (                     -- stairwells, exits, elevators
+  id uuid primary key default gen_random_uuid(),
+  building_id uuid references buildings,
+  name text not null,                     -- 'East Stairwell B' | 'West Stairwell A' | 'Elevator 1' | 'Main exit'
+  floor_from int, floor_to int,           -- affected span, e.g. 9 → 10
+  status text default 'unknown',          -- 'open' | 'blocked' | 'unknown'
+  verification text default 'reported',  -- 'reported' | 'corroborated' | 'staff_verified'
+  updated_by uuid references residents,
+  updated_at timestamptz default now()
+);
+
 create view latest_status as
   select distinct on (resident_id) * from statuses order by resident_id, created_at desc;
 ```
-For the hackathon, **turn RLS off** (or allow all to anon) and say so in the pitch. Turn on Realtime for `statuses` and `reports`.
+For the hackathon, **turn RLS off** (or allow all to anon) and say so in the pitch. Turn on Realtime for `statuses`, `reports` and `routes`.
+
+**Seeding 812 residents is one query**, so match the README's numbers exactly:
+```sql
+-- 12 floors × 17 rooms × 4 beds ≈ 816 → take 812
+insert into residents (building_id, room_id, name, language)
+select b.id, r.id, 'Resident ' || row_number() over (), (array['zh','en','fil','id','vi'])[1 + (random()*4)::int]
+from buildings b join rooms r on r.building_id = b.id cross join generate_series(1,4)
+limit 812;
+```
+Also seed: Room 912 resident with `vulnerable = true, vulnerable_note = 'cannot use stairs'`, plus routes `East Stairwell B (9–10)`, `West Stairwell A`, `Elevator 1`, `Main exit`, all `unknown`.
 
 ---
 
@@ -260,7 +283,7 @@ For the hackathon, **turn RLS off** (or allow all to anon) and say so in the pit
 | Person | Owns | Files |
 |---|---|---|
 | **Dev A: Resident app** | R1 check-in + SOS, R2 report + photo upload, R4 numbers | `app/(resident)/*` |
-| **Dev B: Admin dashboard** | A3 live headcount + floor grid (realtime), A4 reports inbox, A5 roll call button, A6 handoff | `app/(admin)/*` |
+| **Dev B: Admin dashboard** | A3 live headcount + floor grid (realtime), A9 stairwell chips, A4 reports inbox, A5 roll call button, A6 handoff | `app/(admin)/*` |
 | **Dev C: Backend + gov data + slides** | Supabase project, `schema.sql`, `seed.sql`, R5 shelters (CSV→JSON + haversine), R6 alerts, then **builds the PPT** from §11 | `supabase/*`, `src/lib/*`, `src/data/*` |
 
 **Git rules (to avoid merge hell in 3 hours):**
@@ -276,7 +299,7 @@ For the hackathon, **turn RLS off** (or allow all to anon) and say so in the pit
 | Time | Everyone | Checkpoint |
 |---|---|---|
 | **0:00–0:15** | C: scaffold + Supabase project + schema + push. A/B: read this doc, sketch screens on paper | App runs on web + a phone |
-| **0:15–0:30** | C: seed data (1 building, 6F, 60 residents). A/B: start screens with mock data | |
+| **0:15–0:30** | C: seed data (Dorm A, 12F, 812 residents, routes, a "simulate check-ins" script). A/B: start screens with mock data | |
 | **0:30–1:30** | A: check-in, SOS, report + photo. B: dashboard + floor grid + realtime. C: shelters JSON + nearest list, alerts fetch + fallback | |
 | **1:30** | **Merge #1.** Resident check-in shows up live on the admin dashboard | 🎯 Core loop works |
 | **1:30–2:15** | A: numbers screen, peer confirm. B: reports inbox, roll call, handoff. C: alert banner → roll call; **start slides** | |
@@ -289,13 +312,18 @@ For the hackathon, **turn RLS off** (or allow all to anon) and say so in the pit
 ## 11. Demo script + PPT outline
 
 ### Live demo (≈3 min)
-1. Admin dashboard on the projector: **Dorm A, 60 residents, all green / normal**.
-2. Press **"Simulate earthquake"**: this replays a real CWA/NCDR earthquake event. Banner: *M5.x earthquake, Hualien. Roll call started.* Everyone goes **Unknown** (grey).
-3. On the phone (resident): **"Are you safe?"** → tap ✅ Safe. The dashboard tile turns green **live**.
-4. Script/seed fills in more check-ins. One resident in **Room 512** presses **SOS / Need help (mobility)** and the room goes red at the top of the priority list.
-5. Resident reports **"Gas smell, 3F"** with a photo, which appears in the admin reports inbox.
-6. Resident opens **Nearest shelters**: real NFA shelters sorted by distance, capacity, open/full, and an **Open in Maps** link.
-7. Admin taps **Responder handoff**: "52/60 accounted · 1 needs help (512, mobility) · 7 unknown (floors 4–6) · gas reported 3F".
+This follows the README's demo flow so the pitch and the demo tell the same story.
+
+1. Admin dashboard on the projector: **Dorm A, 12 floors, 812 residents**, normal day.
+2. Press **"Simulate earthquake"**: this replays a real CWA/NCDR earthquake event. Banner: *M5.x earthquake. Roll call started.* Dashboard: **0 / 812 accounted for**, every floor grey.
+3. On the phone (resident): **"Are you safe?"** → tap ✅ Safe. The counter ticks up **live**.
+4. Run the "simulate check-ins" script: numbers climb to roughly **623 safe · 43 inside · 5 need help · 141 unknown**.
+5. Resident reports **"East stairwell blocked, debris between 9F and 10F"** with a photo. The 9F row gets a red **East Stairwell B: BLOCKED (reported)** chip.
+6. **Room 912** presses **SOS: cannot descend stairs**. It jumps to the top of the priority list (flagged vulnerable).
+7. Admin (as floor leader) verifies: **East B blocked ✔ staff verified**, **West Stairwell A open ✔**.
+8. Another report: **possible gas smell, 6F**.
+9. Resident opens **Nearest shelters**: real NFA shelters sorted by distance, capacity, open/full, and an **Open in Maps** link.
+10. Admin taps **Responder handoff**: *"27 unaccounted · Room 912 mobility assistance · East Stairwell B blocked 9–10F · West Stairwell A usable · possible gas leak 6F."*
 
 ### Slide outline (8–10 slides)
 1. **Title**: DormSafe, one-line pitch.
@@ -322,11 +350,11 @@ Real auth/onboarding · push notifications (fake with an in-app banner) · backg
 - [ ] Which real dorm/address do we use for the demo? (It decides which county's shelters we bundle.)
 - [ ] Who registers the CWA API key (do it **before** the start)?
 - [ ] Demo languages: English + 中文? Add Filipino for the migrant-worker angle?
-- [ ] Rename "university" → "dormitory" in `readme.md` to match the broader scope (school + company + migrant-worker dorms).
+- [x] ~~Rename "university" → "dormitory" in `readme.md`~~: done; intro now covers school, company and migrant-worker dorms.
 
 ---
 
 ## 14. Current repo status
-- `readme.md`: full vision / pitch (university-focused emergency accountability; still valid as the "why").
+- `readme.md`: full vision / pitch (the "why"): resident states, peer confirmation, floor-leader view, stairwell status, incident grouping, tasks, responder handoff, privacy, non-goals. Examples use a university dorm; scope is all dorms.
 - `HANDOVER.md`: this file.
 - No code yet. **Next step:** Dev C runs §7 setup and pushes the scaffold.
