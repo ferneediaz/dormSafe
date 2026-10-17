@@ -27,7 +27,9 @@ function ResidentPage() {
   const me = residents.find((r) => r.id === meId)!;
   const mate = residents.find((r) => r.id === roommateId)!;
   const { t } = useT();
-  const [loc, setLoc] = useState(`Room ${me.room}, ${me.floor}F`);
+  // Optional: only needed when the resident is somewhere other than their own room.
+  const [where, setWhere] = useState("");
+  const loc = where.trim() || `Room ${me.room}, ${me.floor}F`;
 
   return (
     <main className="mx-auto grid max-w-5xl gap-4 px-4 py-5 lg:grid-cols-[1fr_340px]">
@@ -59,7 +61,7 @@ function ResidentPage() {
           </div>
           <label className="mt-3 flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm">
             <MapPin className="h-4 w-4 text-muted-foreground" />
-            <input value={loc} onChange={(e) => setLoc(e.target.value)} className="w-full bg-transparent outline-none" aria-label="Current location" />
+            <input value={where} onChange={(e) => setWhere(e.target.value)} placeholder={t("locPlaceholder")} className="w-full bg-transparent outline-none placeholder:text-muted-foreground" aria-label="Current location" />
           </label>
           <p className="mt-1 text-xs text-muted-foreground">🔒 {t("locNote")}</p>
           {queued > 0 && <p className="mt-1 text-xs font-semibold text-warn-foreground">⏳ {queued} {t("queued")}</p>}

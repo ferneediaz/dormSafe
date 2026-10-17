@@ -37,6 +37,7 @@ const D: Dict = {
   shelters: ["鄰近避難收容處所", "Nearest shelters", "Pinakamalapit na evacuation center", "Tempat pengungsian terdekat"],
   maps: ["以 Google 地圖開啟", "Open in Google Maps", "Buksan sa Google Maps", "Buka di Google Maps"],
   capacity: ["容量", "Capacity", "Kapasidad", "Kapasitas"],
+  locPlaceholder: ["不在房間？請填寫目前位置（例：1樓大廳）", "Not in your room? Where are you now (e.g. 1F lobby)", "Wala sa kuwarto? Nasaan ka ngayon (hal. 1F lobby)", "Tidak di kamar? Di mana Anda sekarang (mis. lobi 1F)"],
   locNote: ["位置僅在您回報時記錄，不會持續追蹤。", "Location is recorded only when you check in — never tracked continuously.", "Itinatala lang ang lokasyon kapag nag-check in ka — hindi tuloy-tuloy na sinusubaybayan.", "Lokasi hanya dicatat saat Anda melapor — tidak dilacak terus-menerus."],
   offline: ["離線模式：回報已暫存，恢復連線後自動同步", "Offline — check-ins and SOS are queued and will sync automatically", "Offline — naka-queue ang check-in at SOS, awtomatikong isi-sync", "Offline — laporan & SOS diantre dan akan disinkronkan otomatis"],
   queued: ["待同步", "queued", "naka-queue", "antre"],
