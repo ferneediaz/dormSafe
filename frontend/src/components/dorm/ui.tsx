@@ -1,9 +1,9 @@
 import type React from "react";
 import { type ReactNode } from "react";
-import { STATUS_META, type Status } from "@/lib/dorm-data";
+import { STATUS_META, type Status, type Tone } from "@/lib/dorm-data";
 import { cn } from "@/lib/utils";
 
-export const toneBg: Record<string, string> = {
+export const toneBg: Record<Tone, string> = {
   safe: "bg-safe/15 text-safe border-safe/30",
   inside: "bg-inside/15 text-inside border-inside/30",
   warn: "bg-warn/20 text-warn-foreground border-warn/40",
@@ -30,12 +30,12 @@ export function Chip({ tone = "unknown", children }: { tone?: "safe" | "inside" 
   );
 }
 
-export function Card({ title, action, children, className }: { title?: string; action?: ReactNode; children: ReactNode; className?: string }) {
+export function Card({ title, zh, action, children, className }: { title?: string; zh?: string | undefined; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section className={cn("rounded-2xl border bg-card p-4 shadow-sm sm:p-5", className)}>
       {(title || action) && (
         <div className="mb-3 flex items-center justify-between gap-2 border-b pb-2">
-          {title && <h2 className="font-display text-base font-bold tracking-tight">{title}</h2>}
+          {title && <h2 className="font-display text-base font-bold tracking-tight">{title}{zh && <span className="ml-1.5 text-sm font-medium text-muted-foreground">{zh}</span>}</h2>}
           {action}
         </div>
       )}

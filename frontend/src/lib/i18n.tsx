@@ -72,6 +72,9 @@ const D: Dict = {
   typhoon: ["颱風", "Typhoon", "Bagyo", "Topan"],
   tsunami: ["海嘯", "Tsunami", "Tsunami", "Tsunami"],
   fire: ["火災", "Fire", "Sunog", "Kebakaran"],
+  activeAlert: ["緊急狀態", "Emergency active", "Aktibong emergency", "Darurat aktif"],
+  loadingAlerts: ["正在載入警報…", "Loading alerts…", "Naglo-load ng mga alerto…", "Memuat peringatan…"],
+  moreAlerts: ["則警報", "more alerts", "pang alerto", "peringatan lain"],
 };
 const IDX: Record<Lang, number> = { zh: 0, en: 1, fil: 2, id: 3 };
 

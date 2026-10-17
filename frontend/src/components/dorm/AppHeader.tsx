@@ -58,12 +58,12 @@ export function AppHeader() {
             <Globe className="h-3 w-3 ml-1 text-muted-foreground" />
             {LANGS.map((l) => (
               <button
-                key={l.code}
-                onClick={() => setLang(l.code)}
-                className={`rounded px-1.5 py-0.5 font-medium transition ${lang === l.code ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+                key={l.k}
+                onClick={() => setLang(l.k)}
+                className={`rounded px-1.5 py-0.5 font-medium transition ${lang === l.k ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground hover:text-foreground"}`}
                 title={l.label}
               >
-                {l.flag} <span className="hidden sm:inline">{l.label.split(" ")[0]}</span>
+                {l.label}
               </button>
             ))}
           </div>
