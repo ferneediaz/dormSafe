@@ -4,10 +4,9 @@ import { AlertBanner } from "./AlertBanner";
 import { useDorm } from "@/lib/dorm-store";
 import { DORM } from "@/lib/dorm-data";
 import { LANGS, useT } from "@/lib/i18n";
-import { ACCESS_PERMS, ROLES, type AccessRole } from "@/lib/privacy";
 
 export function AppHeader() {
-  const { emergency, online, setOffline, queue, role, setRole } = useDorm();
+  const { emergency, online, setOffline, queue } = useDorm();
   const { t, lang, setLang } = useT();
 
   return (
@@ -25,21 +24,6 @@ export function AppHeader() {
         )}
 
         <div className="flex items-center gap-2">
-          {/* Role switcher for the hackathon / demo */}
-          <label className="text-xs text-muted-foreground hidden md:flex items-center gap-1">
-            <span className="font-semibold text-foreground">Role:</span>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as AccessRole)}
-              className="rounded border bg-background px-1.5 py-0.5 text-xs text-foreground font-medium"
-              title={ACCESS_PERMS[role].description}
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </label>
-
           {/* Network toggle for testing offline queue */}
           <button
             onClick={() => setOffline(online)}

@@ -45,8 +45,8 @@ function ResidentPage() {
           </div>
 
           <h2 className="mt-4 text-sm font-semibold">{t("checkin")}</h2>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {(["SAFE", "INSIDE", "HELP", "UNKNOWN"] as Status[]).map((s) => {
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {(["SAFE", "INSIDE", "HELP"] as Status[]).map((s) => {
               const m = STATUS_META[s];
               return (
                 <button key={s} onClick={() => checkIn(me.id, s, loc)}
