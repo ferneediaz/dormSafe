@@ -1,0 +1,12 @@
+# Local-only folders: never commit or push
+safe-shelter-taiwan/
+dormSafe-fresh/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.env
